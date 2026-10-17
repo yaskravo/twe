@@ -35,6 +35,7 @@ describe('history fill that extends the bottom-end slice', () => {
     const manager = new AppMessagesManager() as any;
     Object.assign(manager, {
       appPeersManager: {getPeerMigratedTo: (): PeerId => undefined},
+      appDeletedMessagesManager: {loadPeer: () => Promise.resolve(), getSavedMids: (): number[] => []},
       middleware: {get: () => () => true},
       getChannelAvailableMinIdGeneration: () => 0,
       mergeReplyKeyboard: () => false,

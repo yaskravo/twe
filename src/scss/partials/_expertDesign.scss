@@ -1,0 +1,14 @@
+// * Expert's design (Settings → Expert → Design): Telegram's layout in a softer, warmer material —
+// * rounder message bubbles, pill-shaped primary buttons and menus that float on a wider shadow. Its
+// * warm neutrals are colours, so the theme applies them (EXPERT_COLOR_MAP in
+// * helpers/themeController.ts). `.design-expert` is on <html>; the classic look is the stylesheets
+// * without it.
+.design-expert {
+  --bubble-border-radius-medium: 12px;
+  --bubble-border-radius-big: 20px;
+  --menu-box-shadow: 0 .5rem 1.75rem var(--menu-box-shadow-color), 0 0 1px var(--menu-box-shadow-color);
+
+  .btn-primary {
+    border-radius: 999px;
+  }
+}

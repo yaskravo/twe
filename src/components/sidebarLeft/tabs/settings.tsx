@@ -22,7 +22,7 @@ import {SliderSuperTabConstructable, SliderSuperTabEventable} from '@components/
 import {AccountAuthorizations, Authorization, ConnectedBot} from '@layer';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
-import {AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
+import {AppExpertSettingsTab, AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
 import showPremiumPopup, {showBusinessPopup} from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import useStars, {hasTonTransactions} from '@stores/stars';
@@ -247,8 +247,9 @@ const Settings = () => {
 
   attachClickEvent(searchBtn, openSearch, {listenerSetter: tab.listenerSetter});
 
-  // ── Sub-tab rows (notifications/data/privacy/general/folders/stickers).
+  // ── Sub-tab rows (expert/notifications/data/privacy/general/folders/stickers).
   const subTabConfigs: SubTabConfig[] = [
+    makeSubTabConfig('star_circle_filled', 'Expert.Title', AppExpertSettingsTab, tab),
     makeSubTabConfig('bell_filled', 'AccountSettings.Notifications', AppNotificationsTab, tab),
     makeSubTabConfig('data_filled', 'DataSettings', AppDataAndStorageTab, tab),
     makeSubTabConfig('key_filled', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, tab),

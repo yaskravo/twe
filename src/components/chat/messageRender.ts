@@ -1,5 +1,6 @@
 import type LazyLoadQueue from '@components/lazyLoadQueue';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
+import isSavedDeletedMessage from '@appManagers/utils/messages/isSavedDeletedMessage';
 import {formatDate, formatFullSentTimeRaw, formatTime} from '@helpers/date';
 import {getFullDate} from '@helpers/date/getFullDate';
 import setInnerHTML from '@helpers/dom/setInnerHTML';
@@ -58,6 +59,14 @@ const makeEdited = () => {
   edited.classList.add('time-edited', 'time-part');
   _i18n(edited, 'EditedMessage');
   return edited;
+};
+
+// Expert: a message someone deleted, kept on this device (see isSavedDeletedMessage)
+const makeDeleted = () => {
+  const deleted = document.createElement('i');
+  deleted.classList.add('time-edited', 'time-deleted', 'time-part');
+  _i18n(deleted, 'Expert.DeletedMessage');
+  return deleted;
 };
 
 // layer 229: an ordinary message an ephemeral one is standing in for says "updated" where an
@@ -241,6 +250,7 @@ export namespace MessageRender {
     const date = new Date(timestamp * 1000);
 
     let editedSpan: HTMLElement,
+      deletedSpan: HTMLElement,
       effectSpan: HTMLElement;
     // sponsoredSpan: HTMLElement;
     // reactionsElement: ReactionsElement,
@@ -269,7 +279,8 @@ export namespace MessageRender {
     let title = /* isSponsored ? undefined :  */getFullDate(new Date(message.date * 1000));
     if(isMessage) {
       title += (message.edit_date && !message.pFlags.edit_hide ? `\nEdited: ${getFullDate(new Date(message.edit_date * 1000))}` : '') +
-        (fwdFrom ? `\nOriginal: ${getFullDate(new Date(fwdFrom.saved_date || fwdFrom.date * 1000))}` : '');
+        (fwdFrom ? `\nOriginal: ${getFullDate(new Date(fwdFrom.saved_date || fwdFrom.date * 1000))}` : '') +
+        (isSavedDeletedMessage(message) ? '\n' + I18n.format('Expert.DeletedMessage.Date', true, [getFullDate(new Date(message.deletedDate * 1000))]) : '');
 
       const messageMedia = message.media;
       if(messageMedia?._ === 'messageMediaDice' && messageMedia.game_outcome) {
@@ -321,6 +332,10 @@ export namespace MessageRender {
         args.unshift(editedSpan = makeUpdated());
       } else if(!editedPrimary && message.edit_date && chatType !== ChatType.Scheduled && !message.pFlags.edit_hide) {
         args.unshift(editedSpan = makeEdited());
+      }
+
+      if(isSavedDeletedMessage(message)) {
+        args.unshift(deletedSpan = makeDeleted());
       }
 
       if(chatType !== ChatType.Pinned && message.pFlags.pinned) {
@@ -389,6 +404,9 @@ export namespace MessageRender {
     //   _reactionsElement.init(reactionsMessage, 'inline');
     //   _reactionsElement.render();
     // }
+    if(deletedSpan) {
+      clonedArgs[clonedArgs.indexOf(deletedSpan)] = makeDeleted();
+    }
     if(repeatSpan) {
       clonedArgs[clonedArgs.indexOf(repeatSpan)] = makeScheduleRepeatPeriod((message as Message.message).schedule_repeat_period);
     }

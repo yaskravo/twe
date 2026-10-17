@@ -6020,6 +6020,24 @@ const lang = {
   'ChatTips.NextTip': 'Next Tip',
   'EmptyPeer.Description': 'Select a chat to start messaging',
 
+  // Expert — what the fork adds (Settings → Expert); their translations are in langExpert.ts
+  'Expert.Title': 'Expert',
+  'Expert.Title.SearchKeywords': 'deleted messages, anti-delete, saved, expert',
+  'Expert.DeletedMessages': 'Deleted Messages',
+  'Expert.SaveDeletedMessages': 'Save Deleted Messages',
+  'Expert.FadeDeletedMessages': 'Fade Deleted Messages',
+  'Expert.SaveDeletedMessages.Caption': 'A message someone deletes stays in the chat, marked as deleted. It is kept only on this device and can only be read.',
+  'Expert.ClearDeletedMessages': 'Clear Saved Copies',
+  'Expert.ClearDeletedMessages.Confirm': 'Remove every saved deleted message from this device? This cannot be undone.',
+  'Expert.ClearDeletedMessages.Done': 'Saved deleted messages removed',
+  'Expert.DeletedMessage': 'deleted',
+  'Expert.DeletedMessage.Date': 'Deleted: %1$s',
+  'Expert.About': 'Telegram Web Expert %1$s, based on Telegram Web K. Free software under the GNU GPL v3.',
+  'Expert.Design': 'Design',
+  'Expert.Design.Expert': 'Expert',
+  'Expert.Design.Classic': 'Classic Telegram',
+  'Expert.Design.Caption': 'Expert rounds the message bubbles and buttons and warms up the neutral colours of the built-in themes.',
+
   'Apply': 'Apply'
 };
 

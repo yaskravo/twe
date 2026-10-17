@@ -173,6 +173,8 @@
   --custom-emoji-size: 1.25rem;
 
   --chat-bubbles-padding: .5rem;
+  --bubble-border-radius-medium: 5px;
+  --bubble-border-radius-big: 15px;
   --chat-input-border-radius: #{$border-radius-big};
   --chat-input-max-width: var(--chat-width);
   --chat-input-btn-send-margin: #{$btn-send-margin};

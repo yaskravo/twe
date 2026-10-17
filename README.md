@@ -1,5 +1,13 @@
-## Telegram Web K
-Based on Webogram, patched and improved. Available for everyone here: https://web.telegram.org/k/
+## Expert
+**Telegram Web Expert** is an unofficial Telegram web client, a fork of [Telegram Web K](https://github.com/morethanwords/tweb) (itself based on Webogram). It is not affiliated with Telegram.
+
+What it adds (Settings → Expert):
+* **Saved deleted messages.** A message someone else deletes stays in the chat, marked *deleted* and faded (the fading can be turned off), with the time it was deleted in its tooltip. It is kept only on this device (IndexedDB, encrypted with the passcode when one is set), survives a reload and can only be read — copied, selected, downloaded. A deletion made from this client deletes as before. Only a message the client has at the moment it is deleted can be kept: one that arrived while the client was open, or is in a chat opened since the page loaded. One deleted while the client was closed is gone.
+
+* **Expert design**, or the classic one: rounder message bubbles, pill-shaped buttons, softer menus and warm neutrals in the built-in themes.
+* Expert's own settings in English, Russian, Ukrainian, Spanish and Portuguese.
+
+Telegram Web K is available for everyone here: https://web.telegram.org/k/
 
 
 ### Developing
