@@ -1909,7 +1909,7 @@ export default appSidebarLeft;
 
 function getVersionLink() {
   const btnMenuFooter = document.createElement('a');
-  btnMenuFooter.href = 'https://github.com/morethanwords/tweb/blob/master/CHANGELOG.md';
+  btnMenuFooter.href = 'https://github.com/yaskravo/twe';
   setBlankToAnchor(btnMenuFooter);
   btnMenuFooter.classList.add('btn-menu-footer');
   btnMenuFooter.addEventListener(CLICK_EVENT_NAME, (e) => {
@@ -1918,7 +1918,7 @@ function getVersionLink() {
   });
   const t = document.createElement('span');
   t.classList.add('btn-menu-footer-text');
-  t.textContent = `Telegram Web${App.suffix} ${App.version} (${App.build})`;
+  t.textContent = `Telegram Web Expert ${App.version} (${App.build})`;
   btnMenuFooter.append(t);
 
   return btnMenuFooter;

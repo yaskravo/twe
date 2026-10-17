@@ -69,6 +69,7 @@ import hasRights from '@appManagers/utils/chats/hasRights';
 import {ChatType} from '@components/chat/chatType';
 import {animateSingle} from '@helpers/animation';
 import focusSearchInput from '@components/chat/focusSearchInput';
+import isSavedDeletedMessage from '@appManagers/utils/messages/isSavedDeletedMessage';
 
 export type ChatSearchKeys = Pick<RequestHistoryOptions, 'query' | 'isCacheableSearch' | 'isPublicHashtag' | 'savedReaction' | 'fromPeerId' | 'inputFilter' | 'hashtagType'>;
 export const CHAT_SEARCH_KEYS: (keyof ChatSearchKeys)[] = ['query', 'isCacheableSearch', 'isPublicHashtag', 'savedReaction', 'fromPeerId', 'inputFilter', 'hashtagType'];
@@ -1502,6 +1503,11 @@ export default class Chat extends EventListenerBase<{
   }
 
   public async sendReaction(options: SendReactionOptions) {
+    // * a message Expert kept after it was deleted is no longer there to react to
+    if(isSavedDeletedMessage(options.message)) {
+      return;
+    }
+
     const isPaidReaction = options.reaction._ === 'reactionPaid';
     const count = options.count ?? 1;
     if(isPaidReaction) {

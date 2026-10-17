@@ -433,6 +433,14 @@
       {
         "name": "repayRequest",
         "type": "{id: number, messageCount: number}"
+      },
+      {
+        "name": "is_deleted",
+        "type": "true"
+      },
+      {
+        "name": "deletedDate",
+        "type": "number"
       }
     ]
   },

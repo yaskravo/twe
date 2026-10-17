@@ -8,7 +8,6 @@
 import {ConstructorDeclMap, Message, MessageFwdHeader, Peer, StarsAmount, Update, Updates} from '@layer';
 import {LogTypes} from '@lib/logger';
 import assumeType from '@helpers/assumeType';
-import App from '@config/app';
 import filterUnique from '@helpers/array/filterUnique';
 import {AppManager} from '@appManagers/manager';
 import parseMarkdown from '@lib/richTextProcessor/parseMarkdown';
@@ -73,6 +72,10 @@ class ApiUpdatesManager {
   private initialSync = true;
 
   private subscriptions: {[channelId: ChatId]: {count: number, interval?: number}} = {};
+
+  // * the updates this client makes up itself to apply its own action, so a handler can tell
+  // * what the user did here from what arrived from the server
+  private localUpdates: WeakSet<Update> = new WeakSet();
 
   constructor() {
     this._constructor(false);
@@ -189,6 +192,7 @@ class ApiUpdatesManager {
   }
 
   public processLocalUpdate(update: Update) {
+    this.localUpdates.add(update);
     this.processUpdateMessage({
       _: 'updateShort',
       update
@@ -196,6 +200,10 @@ class ApiUpdatesManager {
       local: true,
       ignoreSyncLoading: true
     });
+  }
+
+  public isLocalUpdate(update: Update) {
+    return this.localUpdates.has(update);
   }
 
   public processUpdateMessage = (updateMessage: any, options: Partial<{
@@ -957,7 +965,7 @@ class ApiUpdatesManager {
             .then((res) => (res.status === 200 && res.ok && res.text()) || Promise.reject())
             .then((text) => {
               const langStr = strs[lang] || strs.en;
-              const pre = `**Telegram Web${App.suffix} ${langStr} ${newVersion}**\n\n`;
+              const pre = `**Expert ${langStr} ${newVersion}**\n\n`;
 
               text = pre + text;
 

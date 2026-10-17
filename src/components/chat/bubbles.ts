@@ -261,6 +261,7 @@ import {RichMessageBubble, isRichMessageButtonTarget, isRichMessageTarget} from 
 import {isPagingSlideshowTarget} from '@components/slideshow';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
+import isSavedDeletedMessage from '@appManagers/utils/messages/isSavedDeletedMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import {
@@ -2210,10 +2211,12 @@ export default class ChatBubbles {
 
   private canReplyToBubble(bubble: HTMLElement) {
     const message = this.chat.getMessage(getBubbleFullMid(bubble));
-    // a welcome template is replied to by nobody (desktop's welcome section has no Reply)
+    // a welcome template is replied to by nobody (desktop's welcome section has no Reply), and a
+    // message Expert kept after it was deleted is no longer there to reply to
     return !!message &&
       !(isEphemeralMessage(message) && !canReplyToEphemeralMessage(message)) &&
-      !(message as Message.message).pFlags.welcome_template;
+      !(message as Message.message).pFlags.welcome_template &&
+      !isSavedDeletedMessage(message);
   }
 
   public constructPeerHelpers() {
@@ -8036,6 +8039,8 @@ export default class ChatBubbles {
     if(isAnchoredEphemeral) {
       bubble.classList.add('is-ephemeral-anchored', 'avoid-selection');
     }
+    // * a message someone deleted that Expert kept: faded when Settings → Expert says so
+    bubble.classList.toggle('is-saved-deleted', isSavedDeletedMessage(message));
     contentWrapper.append(bubbleContainer);
     bubble.append(contentWrapper);
 

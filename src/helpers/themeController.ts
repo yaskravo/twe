@@ -21,6 +21,7 @@ import pause from '@helpers/schedulers/pause';
 import Transitions, {getTransition} from '@config/transitions';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import noop from '@helpers/noop';
+import {createEffect, createRoot, on} from 'solid-js';
 
 // Hard cap for the theme-switch view transition: how long heavy rendering (videos/stickers/
 // lottie) stays paused, and the deadline after which a stalled transition is force-finished so
@@ -185,6 +186,31 @@ const colorMap: {
   }
 };
 
+// * Expert's design (Settings → Expert → Design) is warmer: its neutrals stand in for the cold greys of
+// * `colorMap` wherever a theme leaves a colour to the defaults. A theme's own colours still win, and
+// * tinted derives every surface from its accent.
+const EXPERT_COLOR_MAP: typeof colorMap = {
+  day: {
+    'background-color': '#F5F2ED',
+    'border-color': '#E6E0D7',
+    'secondary-color': '#CBC4BA'
+  },
+  light: {
+    'background-color': '#F5F2ED',
+    'border-color': '#E6E0D7',
+    'secondary-color': '#CBC4BA'
+  },
+  night: {
+    'surface-color': '#221F1C',
+    'message-background-color': '#221F1C',
+    'background-color': '#181614',
+    'body-background-color': '#181614',
+    'border-color': '#100E0C',
+    'secondary-color': '#77716A',
+    'input-search-background-color': '#181614'
+  }
+};
+
 const themeNameToBaseTheme: {[name in Exclude<AppTheme['name'], 'system'>]: BaseTheme['_']} = {
   day: 'baseThemeClassic',
   night: 'baseThemeNight',
@@ -198,6 +224,7 @@ const log = logger('THEME');
 
 export class ThemeController {
   private themeColor: string;
+  private expertAppearanceWatched: boolean;
   private _themeColorElem: Element;
   private systemTheme: AppTheme['name'];
   private styleElement: HTMLStyleElement;
@@ -256,7 +283,7 @@ export class ThemeController {
   public setThemeColor(color = this.themeColor) {
     if(!color) {
       const themeName = this.getResolvedThemeName();
-      color = colorMap[themeName]?.['surface-color'] || (this.isNight() ? '#212121' : '#ffffff');
+      color = this.getBaseColors(themeName)?.['surface-color'] || (this.isNight() ? '#212121' : '#ffffff');
     }
 
     const themeColorElem = this.themeColorElem;
@@ -265,7 +292,43 @@ export class ThemeController {
     }
   }
 
+  public isExpertDesign() {
+    const [appSettings] = useAppSettings();
+    return appSettings.expert?.design !== 'classic';
+  }
+
+  private getBaseColors(name: AppTheme['name']) {
+    const colors = colorMap[name];
+    const expertColors = this.isExpertDesign() && EXPERT_COLOR_MAP[name];
+    return expertColors ? {...colors, ...expertColors} : colors;
+  }
+
+  // * Expert's appearance settings, as classes on <html> the stylesheets follow: the design is
+  // * `.design-expert` (scss/partials/_expertDesign.scss) and its colours — switching it re-applies the
+  // * theme, which reads them — and `.expert-fade-deleted` fades the saved deleted messages
+  private watchExpertAppearance() {
+    if(this.expertAppearanceWatched) {
+      return;
+    }
+
+    this.expertAppearanceWatched = true;
+    const [appSettings] = useAppSettings();
+    createRoot(() => {
+      createEffect(on(() => this.isExpertDesign(), (expert, wasExpert) => {
+        document.documentElement.classList.toggle('design-expert', expert);
+        if(wasExpert !== undefined) {
+          this.setTheme();
+        }
+      }));
+
+      createEffect(() => {
+        document.documentElement.classList.toggle('expert-fade-deleted', appSettings.expert?.fadeDeletedMessages !== false);
+      });
+    });
+  }
+
   public setThemeListener() {
+    this.watchExpertAppearance();
     try {
       const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const checkDarkMode = () => {
@@ -542,7 +605,7 @@ export class ThemeController {
           if(!appliedColors.has(name as AppColorName)) {
             this.applyAppColor({
               name: name as AppColorName,
-              hex: colorMap[fallbackName][name as AppColorName],
+              hex: this.getBaseColors(fallbackName)[name as AppColorName],
               mixColor: defaultMixColor,
               ...options
             });
@@ -575,7 +638,8 @@ export class ThemeController {
   }) {
     const appColor = appColorMap[name];
     const resolvedName: AppTheme['name'] = themeName ?? (isNight ? 'night' : 'day');
-    mixColor ??= hexToRgb(colorMap[resolvedName]['surface-color']);
+    const baseColors = this.getBaseColors(resolvedName);
+    mixColor ??= hexToRgb(baseColors['surface-color']);
     const increaseContrast = this.isHighContrast();
     if(increaseContrast) {
       if(name === 'message-out-background-color' && isNight) hex = ensureTextContrast(hex, [255, 255, 255]);
@@ -584,7 +648,7 @@ export class ThemeController {
         hex = ensureTextContrast(hex, messageSurface);
       }
       if(name === 'primary-color' || name === 'secondary-text-color' || name === 'danger-color' || name === 'link-color' || name === 'green-color') {
-        const background = hexToRgb(colorMap[resolvedName]['background-color']);
+        const background = hexToRgb(baseColors['background-color']);
         const surfaceLuminance = relativeLuminance(mixColor);
         const backgroundLuminance = relativeLuminance(background);
         const limitingSurface = isNight ?
@@ -782,7 +846,7 @@ export class ThemeController {
     const themeName = this.getThemeName(theme);
     const isNight = this.isNightThemeName(themeName);
     const themeSettings = this.getThemeSettings(theme, isNight);
-    const baseColors = colorMap[themeName] || colorMap[isNight ? 'night' : 'day'];
+    const baseColors = this.getBaseColors(colorMap[themeName] ? themeName : (isNight ? 'night' : 'day'));
 
     let hsvTemp1 = rgbToHsv(...hexToRgb(baseColors['primary-color'])); // primary base
     let hsvTemp2 = rgbToHsv(...getRgbColorFromTelegramColor(themeSettings.accent_color)); // new primary

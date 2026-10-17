@@ -254,6 +254,13 @@ export const AppGeneralSettingsTab =
   });
 
 
+export const AppExpertSettingsTab =
+  scaffoldSolidJSTab({
+    title: 'Expert.Title',
+    getComponentModule: () => import('../sidebarLeft/tabs/expertSettings')
+  });
+
+
 export const AppChatBackgroundTab =
   scaffoldSolidJSTab({
     title: 'ChatBackground',

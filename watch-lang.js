@@ -4,16 +4,16 @@ const crypto = require('crypto');
 const {execSync} = require('child_process');
 
 const SRC_DIR = path.join(__dirname, 'src');
-const LANG_FILE_NAMES = ['lang.ts', 'langSign.ts'];
+const LANG_FILE_NAMES = ['lang.ts', 'langSign.ts', 'langExpert.ts'];
 const LANG_FILES = LANG_FILE_NAMES.map((name) => path.join(SRC_DIR, name));
 const EDIT_FILE_PATH = path.join(SRC_DIR, 'langPackLocalVersion.ts');
 const npmCmd = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
 
 // The version tells a client that its cached language pack is older than the local strings, so it
-// goes up only when lang.ts or langSign.ts really changed. Next to it the file keeps a hash of the
-// two: a dev server that starts with the same strings leaves the file alone, since rewriting it
+// goes up only when lang.ts, langSign.ts or langExpert.ts really changed. Next to it the file keeps a
+// hash of them: a dev server that starts with the same strings leaves the file alone, since rewriting it
 // reloads every page served from this checkout - previews, a test suite's server - for nothing.
-const HASH_PREFIX = '// lang.ts + langSign.ts: ';
+const HASH_PREFIX = '// lang.ts + langSign.ts + langExpert.ts: ';
 
 const readVersionFile = () => {
   try {

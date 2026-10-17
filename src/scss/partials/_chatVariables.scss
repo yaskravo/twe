@@ -17,8 +17,9 @@ $reply-markup-margin-top: .0625rem;
 $reply-markup-row-min-height: 2.5rem;
 $reply-markup-row-height: $reply-markup-row-min-height + $bubble-margin;
 $bubble-beside-button-width: 38px;
-$bubble-border-radius-medium: 5px;
-$bubble-border-radius-big: 15px;
+// * custom properties, so a design can round the bubbles differently (base.scss holds the defaults)
+$bubble-border-radius-medium: var(--bubble-border-radius-medium);
+$bubble-border-radius-big: var(--bubble-border-radius-big);
 $message-padding-top: 4px;
 $message-padding-bottom: 5px;
 $message-padding-horizontal: 8px;

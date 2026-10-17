@@ -177,6 +177,7 @@ function makeRichMessagesHarness() {
       clearSummaries: vi.fn()
     },
     getMessageByPeer: vi.fn(),
+    appDeletedMessagesManager: {forget: vi.fn()},
     saveApiResult
   });
 

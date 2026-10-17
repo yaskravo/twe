@@ -102,6 +102,7 @@ import copyMessageMediaWithFeedback from '@components/copyMessageMediaWithFeedba
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
+import isSavedDeletedMessage from '@appManagers/utils/messages/isSavedDeletedMessage';
 import {flattenRichMessageSummary} from '@lib/richMessage';
 
 type ChatContextMenuButton = ButtonMenuItemOptions & {
@@ -111,6 +112,8 @@ type ChatContextMenuButton = ButtonMenuItemOptions & {
   isSponsored?: true,
   // offered on a welcome message too (layer 229): its section only edits, copies and deletes
   welcome?: true,
+  // offered on a message Expert kept after it was deleted, which can only be read: copied, downloaded, selected
+  savedDeleted?: true,
   localName?: 'views' | 'emojis' | 'sponsorInfo' | 'sponsorAdditionalInfo'
 };
 
@@ -749,6 +752,10 @@ export default class ChatContextMenu {
         return false;
       }
 
+      if(isSavedDeletedMessage(this.message) && !button.savedDeleted) {
+        return false;
+      }
+
       // if((appImManager.chatSelection.isSelecting && !button.withSelection) || (button.withSelection && !appImManager.chatSelection.isSelecting)) {
       if(this.chat.selection.isSelecting && !button.withSelection) {
         good = false;
@@ -1102,6 +1109,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: 'Copy',
+      savedDeleted: true,
       welcome: true,
       onClick: this.onCopyClick,
       verify: () => this.canCopyText() &&
@@ -1111,6 +1119,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: 'Chat.CopySelectedText',
+      savedDeleted: true,
       welcome: true,
       onClick: this.onCopyClick,
       verify: () => this.canCopyText() &&
@@ -1119,6 +1128,7 @@ export default class ChatContextMenu {
     }, this.copyMediaButton = {
       icon: 'copy',
       text: 'MediaViewer.Context.Copy',
+      savedDeleted: true,
       welcome: true,
       onClick: this.onCopyMediaClick,
       verify: () => this.richMedia ?
@@ -1133,6 +1143,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'search',
       text: 'Chat.SearchSelected',
+      savedDeleted: true,
       onClick: () => {
         const selection = getAppWindow().getSelection();
         this.chat.initSearch({query: selection.toString()});
@@ -1142,6 +1153,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: 'Message.Context.Selection.Copy',
+      savedDeleted: true,
       onClick: this.onCopyClick,
       verify: async() => {
         if(
@@ -1168,6 +1180,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: this.isEmailTarget ? 'Text.Context.Copy.Email' : 'CopyLink',
+      savedDeleted: true,
       welcome: true,
       onClick: this.onCopyAnchorLinkClick,
       verify: () => this.isAnchorTarget,
@@ -1175,6 +1188,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: 'Text.Context.Copy.Username',
+      savedDeleted: true,
       welcome: true,
       onClick: () => {
         copyTextToClipboard(this.target.textContent);
@@ -1184,6 +1198,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'copy',
       text: 'Text.Context.Copy.Hashtag',
+      savedDeleted: true,
       welcome: true,
       onClick: () => {
         copyTextToClipboard(this.target.textContent);
@@ -1258,6 +1273,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'download',
       text: 'MediaViewer.Context.Download',
+      savedDeleted: true,
       welcome: true,
       onClick: () => this.richMedia ?
         appDownloadManager.downloadToDisc({media: this.richMedia}) :
@@ -1375,6 +1391,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'select',
       text: 'Message.Context.Select',
+      savedDeleted: true,
       onClick: this.onSelectClick,
       verify: () => !this.isSelected && this.isSelectable,
       notDirect: () => true,
@@ -1382,6 +1399,7 @@ export default class ChatContextMenu {
     }, {
       icon: 'select',
       text: 'Message.Context.Selection.Clear',
+      savedDeleted: true,
       onClick: this.onClearSelectionClick,
       verify: () => this.isSelected,
       notDirect: () => true,
@@ -1862,6 +1880,7 @@ export default class ChatContextMenu {
       !isEphemeralMessage(this.message) &&
       // a welcome template's id is no message's id: nothing to react to (desktop's `canReact`)
       !(this.message as Message.message).pFlags.welcome_template &&
+      !isSavedDeletedMessage(this.message) &&
       !this.reactionElement
     ) {
       const reactions = this.message.reactions;

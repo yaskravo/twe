@@ -159,6 +159,15 @@ export type StateSettings = {
   cacheTTL: number,
   cacheSize: number,
   showArchiveInChatList: boolean,
+  // What the Expert fork adds on top of the client (Settings → Expert)
+  expert: {
+    // A message someone else deleted stays in its chat, marked as deleted, kept on this device only
+    saveDeletedMessages: boolean,
+    // Those messages are shown faded rather than like any other
+    fadeDeletedMessages: boolean,
+    // Expert's own look (rounder shapes, the system font, warm neutrals) or Telegram's classic one
+    design: 'expert' | 'classic'
+  },
   mediaEditor: {
     colorByBrush?: Partial<Record<ColoredBrushType, SavedBrushColor>>;
     brushSize?: number;
@@ -590,6 +599,11 @@ export const SETTINGS_INIT: StateSettings = {
   cacheTTL: 86400 * 7, // 1 week
   cacheSize: 0, // Auto
   showArchiveInChatList: true,
+  expert: {
+    saveDeletedMessages: true,
+    fadeDeletedMessages: true,
+    design: 'expert'
+  },
   mediaEditor: {
     colorByBrush: {}
   },

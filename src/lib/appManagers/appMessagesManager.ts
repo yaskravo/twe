@@ -42,6 +42,8 @@ import getServerMessageId from '@appManagers/utils/messageId/getServerMessageId'
 import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessageId';
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
+import isSavedDeletedMessage, {SavedDeletedMessage} from '@appManagers/utils/messages/isSavedDeletedMessage';
+import mergeSavedDeletedMids from '@appManagers/utils/messages/mergeSavedDeletedMids';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
 import isForceReplyMarkup from '@appManagers/utils/messages/isForceReplyMarkup';
 import resolveEphemeralCommand, {
@@ -863,8 +865,8 @@ export class AppMessagesManager extends AppManager {
 
       updateChannelAvailableMessages: this.onUpdateChannelAvailableMessages,
 
-      updateDeleteMessages: this.onUpdateDeleteMessages,
-      updateDeleteChannelMessages: this.onUpdateDeleteMessages,
+      updateDeleteMessages: this.onUpdateDeleteMessagesEvent,
+      updateDeleteChannelMessages: this.onUpdateDeleteMessagesEvent,
 
       updateNewEphemeralMessage: this.onUpdateNewEphemeralMessage,
       updateEditEphemeralMessage: this.onUpdateEditEphemeralMessage,
@@ -8916,7 +8918,7 @@ export class AppMessagesManager extends AppManager {
 
   public async canEditMessage(message: Message.message | Message.messageService, kind: 'text' | 'poll' = 'text') {
     // an anchored one shows the bot's content, not its own — editing it would send that back
-    if(this.isEphemeralMessage(message) || isAnchoredEphemeralMessage(message)) {
+    if(this.isEphemeralMessage(message) || isAnchoredEphemeralMessage(message) || isSavedDeletedMessage(message)) {
       return false;
     }
 
@@ -8969,6 +8971,11 @@ export class AppMessagesManager extends AppManager {
   }
 
   public canDeleteMessage(message: MyMessage) {
+    // * gone from the server already: there is nothing left there to delete
+    if(isSavedDeletedMessage(message)) {
+      return false;
+    }
+
     if(message?._ === 'message' && message.pFlags.welcome_template) {
       return this.canManageWelcomeMessages(message.peerId);
     }
@@ -12009,12 +12016,21 @@ export class AppMessagesManager extends AppManager {
     if(fullChatChanged) this.rootScope.dispatchEvent('chat_full_update', channelId);
   }
 
+  // * a deletion is kept when it reaches the client from the server — someone else deleted the message,
+  // * or the user did on another device; one this client makes itself comes as a local update
+  private onUpdateDeleteMessagesEvent = (update: Update.updateDeleteMessages | Update.updateDeleteChannelMessages) => {
+    this.onUpdateDeleteMessages(update, {
+      keepDeleted: !this.apiUpdatesManager.isLocalUpdate(update)
+    });
+  };
+
   private onUpdateDeleteMessages = (
     update: Update.updateDeleteMessages | Update.updateDeleteChannelMessages,
     options: {
       dispatchHistoryDelete?: boolean,
       markAsDeleted?: boolean,
-      clearSearchCounters?: boolean
+      clearSearchCounters?: boolean,
+      keepDeleted?: boolean
     } = {}
   ) => {
     const channelId = (update as Update.updateDeleteChannelMessages).channel_id;
@@ -12038,6 +12054,10 @@ export class AppMessagesManager extends AppManager {
     if(ephemeralIds.length) {
       this.removeEphemeralMessages(peerId, ephemeralIds);
     }
+    if(options.keepDeleted) {
+      mids = this.keepDeletedMessages(peerId, mids);
+    }
+
     if(!mids.length) {
       return new Set<number>();
     }
@@ -12051,7 +12071,6 @@ export class AppMessagesManager extends AppManager {
       options.markAsDeleted
     );
 
-    const virtual = new Map<number, {dialog: ForumTopic | SavedDialog, counts: DeletedMessageCounts}>();
     const monoforumDialogs: MonoforumDialog[] = [];
     const threadsStorages = Array.from(historyUpdated.byThreadKey).flatMap(([threadKey, counts]) => {
       const [peerId, mid] = threadKey.split('_');
@@ -12060,8 +12079,6 @@ export class AppMessagesManager extends AppManager {
       const monoforumDialog = this.monoforumDialogsStorage.getDialogByParent(threadPeerId, threadId);
       if(monoforumDialog) monoforumDialogs.push(monoforumDialog);
 
-      const dialog = this.dialogsStorage.getAnyDialog(threadPeerId, threadId) as ForumTopic | SavedDialog;
-      if(dialog) virtual.set(threadId, {dialog, counts});
       if(!this.threadsStorage?.[threadPeerId]?.[threadId]) return [];
       return [{
         historyStorage: this.getHistoryStorage(peerId.toPeerId(), +mid),
@@ -12090,13 +12107,36 @@ export class AppMessagesManager extends AppManager {
       this.rootScope.dispatchEvent('history_delete', {peerId, msgs: historyUpdated.msgs});
     }
 
-    const dialogs: Array<{dialog: AnyDialog, counts: DeletedMessageCounts}> = [
-      ...virtual.values()
-    ];
+    this.appDeletedMessagesManager.forget(peerId, historyUpdated.msgs);
+    this.applyDeletedMessageCounts(peerId, historyUpdated, historyUpdated.msgs);
+
+    for(const {parentPeerId, peerId} of monoforumDialogs) {
+      // TODO: Do not refetch if the top_message was not deleted or the new top_message is cached
+      this.monoforumDialogsStorage.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
+    }
+
+    return historyUpdated.msgs;
+  };
+
+  /**
+   * Takes what leaves a chat off its dialogs' counters — the chat's own and its topics' — and finds
+   * a new top message when the top one is among `deletedMids`.
+   */
+  private applyDeletedMessageCounts(
+    peerId: PeerId,
+    counts: DeletedMessageCounts & {byThreadKey: Map<string, DeletedMessageCounts>},
+    deletedMids: Set<number>
+  ) {
+    const dialogs: Array<{dialog: AnyDialog, counts: DeletedMessageCounts}> = [];
+    for(const [threadKey, threadCounts] of counts.byThreadKey) {
+      const [threadPeerId, threadId] = threadKey.split('_');
+      const dialog = this.dialogsStorage.getAnyDialog(threadPeerId.toPeerId(), +threadId) as ForumTopic | SavedDialog;
+      if(dialog) dialogs.push({dialog, counts: threadCounts});
+    }
 
     const dialog = this.getDialogOnly(peerId);
     if(dialog) {
-      dialogs.unshift({dialog, counts: historyUpdated});
+      dialogs.unshift({dialog, counts});
     }
 
     dialogs.forEach(({dialog, counts}) => {
@@ -12132,7 +12172,7 @@ export class AppMessagesManager extends AppManager {
         }
       }
 
-      if(historyUpdated.msgs.has(dialog.top_message)) {
+      if(deletedMids.has(dialog.top_message)) {
         const historyStorage = this.getHistoryStorage(dialog.peerId, _isDialog ? undefined : getDialogKey(dialog));
         const slice = historyStorage.history.first;
 
@@ -12154,14 +12194,132 @@ export class AppMessagesManager extends AppManager {
 
       this.dialogsStorage.setDialogToState(dialog);
     });
+  }
 
-    for(const {parentPeerId, peerId} of monoforumDialogs) {
-      // TODO: Do not refetch if the top_message was not deleted or the new top_message is cached
-      this.monoforumDialogsStorage.updateDialogsByPeerId({parentPeerId, ids: [peerId]});
+  /**
+   * Expert: with "Save deleted messages" on, a message someone else deleted stays where it is,
+   * flagged `is_deleted`, and is kept on the device (`appDeletedMessagesManager`). It leaves the
+   * unread counters and the pinned list the way a deleted message does — the server no longer
+   * counts it in either.
+   *
+   * Returns the mids that still have to be deleted.
+   */
+  private keepDeletedMessages(peerId: PeerId, mids: number[]) {
+    if(!this.appDeletedMessagesManager.isEnabled()) {
+      return mids;
     }
 
-    return historyUpdated.msgs;
-  };
+    const storage = this.getHistoryMessagesStorage(peerId);
+    const counts: DeletedMessageCounts & {byThreadKey: Map<string, DeletedMessageCounts>} = {
+      count: 0,
+      unread: 0,
+      unreadMentions: 0,
+      unreadReactions: 0,
+      byThreadKey: new Map()
+    };
+    const kept: SavedDeletedMessage[] = [];
+    const deletedDate = tsNow(true);
+    const rest = mids.filter((mid) => {
+      const message = this.getMessageFromStorage(storage, mid) as Message.message;
+      if(isSavedDeletedMessage(message)) {
+        return false;
+      }
+
+      if(
+        message?._ !== 'message' ||
+        isTempId(mid) ||
+        message.pFlags.is_outgoing ||
+        message.pFlags.is_scheduled ||
+        message.pFlags.local ||
+        message.pFlags.sponsored ||
+        this.isEphemeralMessage(message) ||
+        isAnchoredEphemeralMessage(message)
+      ) {
+        return true;
+      }
+
+      const threadKey = this.getThreadKey(message);
+      let threadCounts: DeletedMessageCounts;
+      if(threadKey) {
+        threadCounts = counts.byThreadKey.get(threadKey);
+        if(!threadCounts) {
+          counts.byThreadKey.set(threadKey, threadCounts = {
+            count: 0,
+            unread: 0,
+            unreadMentions: 0,
+            unreadReactions: 0
+          });
+        }
+      }
+
+      if(!message.pFlags.out && message.pFlags.unread) {
+        ++counts.unread;
+        if(threadCounts) ++threadCounts.unread;
+        this.rootScope.dispatchEvent('notification_cancel', `msg_${this.getAccountNumber()}_${peerId}_${mid}`);
+
+        if(isMentionUnread(message)) {
+          ++counts.unreadMentions;
+          if(threadCounts) ++threadCounts.unreadMentions;
+          this.modifyCachedMentions({peerId, mid, add: false});
+        }
+
+        delete message.pFlags.unread;
+      }
+
+      if(message.pFlags.out && message.reactions?.recent_reactions?.some((reaction) => reaction.pFlags.unread)) {
+        ++counts.unreadReactions;
+        if(threadCounts) ++threadCounts.unreadReactions;
+        this.modifyCachedMentions({peerId, mid, add: false, isReaction: true});
+      }
+
+      if(message.pFlags.pinned) {
+        delete message.pFlags.pinned;
+        this.resetPinnedMessagesCache(peerId, [mid], false);
+      }
+
+      message.pFlags.is_deleted = true;
+      message.deletedDate = deletedDate;
+      kept.push(message as SavedDeletedMessage);
+      return false;
+    });
+
+    if(!kept.length) {
+      return rest;
+    }
+
+    this.applyDeletedMessageCounts(peerId, counts, new Set());
+    this.appDeletedMessagesManager.remember(peerId, kept);
+
+    for(const message of kept) {
+      this.setMessageToStorage(storage, message); // * to the tabs' mirror too
+      this.rootScope.dispatchEvent('message_edit', {
+        storageKey: storage.key,
+        peerId,
+        mid: message.mid,
+        message
+      });
+    }
+
+    return rest;
+  }
+
+  /**
+   * Removes saved deleted messages from the device for good, the way a deletion made here would.
+   */
+  public dropSavedDeletedMessages(peerId: PeerId, mids: number[]) {
+    this.apiUpdatesManager.processLocalUpdate(this.appPeersManager.isChannel(peerId) ? {
+      _: 'updateDeleteChannelMessages',
+      channel_id: peerId.toChatId(),
+      messages: mids,
+      pts: undefined,
+      pts_count: undefined
+    } : {
+      _: 'updateDeleteMessages',
+      messages: mids,
+      pts: undefined,
+      pts_count: undefined
+    });
+  }
 
   private onUpdateChannel = (update: Update.updateChannel) => {
     const channelId = update.channel_id;
@@ -13533,8 +13691,13 @@ export class AppMessagesManager extends AppManager {
       mids.splice(i, 0, offsetId);
     }
 
+    // * the server leaves the messages Expert kept out of every page, so they are put back where they were
+    const savedDeletedCount = historyStorage && !searchSlicedArray && !options.inputFilter && !options.query && !options.monoforumThreadId ?
+      this.mergeSavedDeletedMids(peerId, options.threadId, mids, isEnd, offsetId) :
+      0;
+
     let slice: Slice<any>, hadSlice: boolean;
-    if(!count) {
+    if(!count && !savedDeletedCount) {
       slice = slicedArray.slice;
       hadSlice = true;
     } else if(searchSlicedArray) {
@@ -13565,6 +13728,28 @@ export class AppMessagesManager extends AppManager {
     }
 
     return {slice, mids, messages, ...isEnd};
+  }
+
+  private mergeSavedDeletedMids(
+    peerId: PeerId,
+    threadId: number,
+    pageMids: number[],
+    ends: {isTopEnd: boolean, isBottomEnd: boolean},
+    offsetId?: number
+  ) {
+    let savedMids = this.appDeletedMessagesManager.getSavedMids(peerId);
+    if(threadId) {
+      const threadKey = peerId + '_' + threadId;
+      savedMids = [...savedMids].filter((mid) => this.getThreadKey(this.getMessageByPeer(peerId, mid)) === threadKey);
+    }
+
+    return mergeSavedDeletedMids({
+      pageMids,
+      savedMids,
+      offsetId: offsetId && !isTempId(offsetId) ? offsetId : undefined,
+      isTopEnd: ends.isTopEnd,
+      isBottomEnd: ends.isBottomEnd
+    });
   }
 
   private async fillHistoryStorage(options: RequestHistoryOptions & {
@@ -13608,10 +13793,14 @@ export class AppMessagesManager extends AppManager {
     }
 
     const channelCutoffGeneration = this.getChannelAvailableMinIdGeneration(requestPeerId);
-    const historyResult = await this.requestHistory({
-      ...options,
-      peerId: requestPeerId
-    });
+    const [historyResult] = await Promise.all([
+      this.requestHistory({
+        ...options,
+        peerId: requestPeerId
+      }),
+      // * a chat's history page is merged with its saved deleted messages, which have to be known by then
+      peerId && !inputFilter && !options.query && this.appDeletedMessagesManager.loadPeer(peerId)
+    ]);
 
     if(!middleware()) {
       return;
@@ -14843,6 +15032,7 @@ export class AppMessagesManager extends AppManager {
     // belongs to the message it stands in front of.
     return message?._ === 'message' &&
       !isAnchoredEphemeralMessage(message) &&
+      !isSavedDeletedMessage(message) &&
       !(message as Message.message).pFlags.noforwards &&
       !(message.media as MessageMedia.messageMediaPhoto)?.ttl_seconds &&
       !this.appPeersManager.noForwards(message.peerId);

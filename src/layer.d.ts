@@ -1063,6 +1063,7 @@ export namespace Message {
       ephemeral?: true,
       ephemeral_anchored?: true,
       welcome_template?: true,
+      is_deleted?: true,
     }>,
     flags2?: number,
     id: number,
@@ -1118,7 +1119,8 @@ export namespace Message {
     storageKey?: MessagesStorageKey,
     ephemeral_id?: number,
     ephemeral_receiver_id?: UserId,
-    repayRequest?: {id: number, messageCount: number}
+    repayRequest?: {id: number, messageCount: number},
+    deletedDate?: number
   };
 
   export type messageService = {

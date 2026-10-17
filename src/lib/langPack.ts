@@ -230,7 +230,8 @@ namespace I18n {
       managers.appLangPackManager.getCountriesList(langCode, ignoreCache),
       polyfillPromise,
       // * no word from the server (a code it does not know) leaves the direction to the code
-      managers.appLangPackManager.getLanguage(langCode, web ? 'web' : App.langPack).catch((): undefined => undefined)
+      managers.appLangPackManager.getLanguage(langCode, web ? 'web' : App.langPack).catch((): undefined => undefined),
+      import('../langExpert')
     ]);
   }
 
@@ -270,7 +271,7 @@ namespace I18n {
       }
 
       throw err;
-    }).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _, language]) => {
+    }).then(([langPack1, langPack2, localLangPack1, localLangPack2, countries, _, language, langExpert]) => {
       let strings: LangPackString[] = [];
 
       const pushLocal = () => [localLangPack1, localLangPack2].forEach((l) => {
@@ -283,6 +284,10 @@ namespace I18n {
       if(!TEST_LOCAL) pushLocal();
       strings = strings.concat(...[langPack1.strings, langPack2.strings].filter(Boolean));
       if(TEST_LOCAL) pushLocal();
+
+      // * the fork's own strings, which no server pack has, over the English that would stand in for them
+      const expertStrings = langExpert.default[langCode] ?? langExpert.default[langCode.split('-', 1)[0]];
+      if(expertStrings) formatLocalStrings(expertStrings, strings);
 
       langPack1.strings = strings;
       langPack1.countries = countries;
