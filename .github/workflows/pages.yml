@@ -1,0 +1,83 @@
+name: Deploy to GitHub Pages
+
+# Builds Expert from master and publishes it on GitHub Pages (Settings → Pages → Source: GitHub
+# Actions). The app is static: the browser connects to Telegram itself, nothing runs on a server.
+#
+# The site's own Telegram API id is taken from the repository secrets TELEGRAM_API_ID and
+# TELEGRAM_API_HASH (my.telegram.org → API development tools) when they are set; without them the
+# build keeps the one in .env.
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# * one deployment at a time, and a newer push does not wait for an older one to finish
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Use the site's own Telegram API id
+        env:
+          API_ID: ${{ secrets.TELEGRAM_API_ID }}
+          API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+        run: |
+          if [ -n "$API_ID" ] && [ -n "$API_HASH" ]; then
+            printf 'VITE_API_ID=%s\nVITE_API_HASH=%s\n' "$API_ID" "$API_HASH" > .env.local
+          fi
+
+      # * a client whose cached language pack is older than this number fetches it again, so the
+      # * strings a deploy brings reach those who have the site open already
+      - name: Number this build's local strings
+        run: echo "const langPackLocalVersion = ${{ github.run_number }};export default langPackLocalVersion;" > src/langPackLocalVersion.ts
+
+      # * `pnpm build` also runs every unit test, and one suite fails on the upstream code as well
+      - run: pnpm run typecheck
+      - run: pnpm run generate-changelog
+      - run: pnpm exec vite build
+      - run: pnpm run check-bundle
+
+      # * the site is what server.js serves: the build over public/, which holds the static assets
+      # * (images, fonts, sounds, the voice recorder's workers) the build does not copy
+      - name: Put the site together
+        run: |
+          mkdir site
+          cp -r public/. site/
+          cp -r dist/. site/
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
