@@ -1,14 +1,70 @@
-// * Expert's design (Settings → Expert → Design): Telegram's layout in a softer, warmer material —
-// * rounder message bubbles, pill-shaped primary buttons and menus that float on a wider shadow. Its
-// * warm neutrals are colours, so the theme applies them (EXPERT_COLOR_MAP in
-// * helpers/themeController.ts). `.design-expert` is on <html>; the classic look is the stylesheets
-// * without it.
+// * Expert's design (Settings → Expert → Design): Telegram's layout in a softer, warmer material, in
+// * the spirit of iOS and Material You — rounder message bubbles and menus, pill-shaped buttons
+// * labelled in sentence case, menus that float on a wider shadow, and motion that starts quickly and
+// * settles softly. Its font (config/font.ts, chosen in Settings → Expert) and its warm neutrals
+// * (EXPERT_COLOR_MAP) are applied by helpers/themeController.ts: the font as `--font-regular` on
+// * <html>, the colours with the theme. `.design-expert` is on <html>; the classic look is the
+// * stylesheets without it.
 .design-expert {
-  --bubble-border-radius-medium: 12px;
-  --bubble-border-radius-big: 20px;
+  // * how round: a factor the user sets (Settings → Expert → Appearance), put on <html> by
+  // * helpers/themeController.ts
+  --expert-corner-scale: 1;
+  --bubble-border-radius-medium: calc(12px * var(--expert-corner-scale));
+  --bubble-border-radius-big: calc(20px * var(--expert-corner-scale));
   --menu-box-shadow: 0 .5rem 1.75rem var(--menu-box-shadow-color), 0 0 1px var(--menu-box-shadow-color);
+
+  // * only the curves change: some code waits for these transitions by their durations
+  --transition-standard-easing: cubic-bezier(.22, .8, .24, 1);
+  --layer-transition: .2s cubic-bezier(.22, .8, .24, 1);
+  --tabs-transition: .2s cubic-bezier(.22, .8, .24, 1);
+  // * what scales open — a menu, a popup — overshoots a little and settles, the way iOS springs do;
+  // * at reduced motion they only fade, which a curve past 1 does not disturb
+  --btn-menu-transition: .2s cubic-bezier(.3, 1.3, .5, 1);
+  --popup-transition-function: cubic-bezier(.3, 1.3, .5, 1);
+
+  .btn-menu {
+    &,
+    &-items {
+      border-radius: calc(1.25rem * var(--expert-corner-scale));
+    }
+
+    &-item {
+      border-radius: calc(.875rem * var(--expert-corner-scale));
+    }
+  }
 
   .btn-primary {
     border-radius: 999px;
+  }
+
+  // * a dangerous action stands apart from the orange accent by its weight, not by colour alone, and
+  // * in a popup on a soft red pill as well
+  .btn.danger {
+    font-weight: 700;
+  }
+
+  .btn-menu-item.danger {
+    font-weight: 600;
+  }
+
+  .popup-button.danger {
+    background-color: var(--light-danger-color);
+  }
+
+  // * labels as they are written, not shouted
+  .btn-primary,
+  .btn-large,
+  .popup-button {
+    text-transform: none !important;
+  }
+
+  // * a filled button gives a little under the finger (full motion only); the corner buttons move by
+  // * their own transform and stay out of it
+  body.animation-level-2 .btn-primary.btn-color-primary:not(.btn-corner) {
+    transition: opacity var(--transition-standard-out), background-color var(--transition-standard-out), color var(--transition-standard-out), transform .15s var(--transition-standard-easing);
+
+    &:active {
+      transform: scale(.97);
+    }
   }
 }

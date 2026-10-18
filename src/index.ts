@@ -411,7 +411,26 @@ if(import.meta.env.DEV) {
   };
 }
 
+// * framed by a page of another site: the client does not start, so nothing of it can be clicked
+// * through from under a disguise (GitHub Pages, which serves Expert, cannot send a header that
+// * forbids it). A frame of the client's own origin — Document PiP — reads the top window fine
+const isFramedByAnotherSite = () => {
+  if(window.top === window) {
+    return false;
+  }
+
+  try {
+    return window.top.location.origin !== location.origin;
+  } catch(err) {
+    return true;
+  }
+};
+
 /* false &&  */document.addEventListener('DOMContentLoaded', async() => {
+  if(isFramedByAnotherSite()) {
+    return;
+  }
+
   const perf = performance.now();
   randomlyChooseVersionFromSearch();
   setSidebarLeftWidth();

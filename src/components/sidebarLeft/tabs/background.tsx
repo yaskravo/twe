@@ -37,6 +37,36 @@ import LazyLoadQueue from '@components/lazyLoadQueue';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 
+export const WALLPAPER_IMAGE_TYPES = 'image/x-png,image/png,image/jpeg';
+
+// A picked image on its way to becoming a wallpaper: prepared for upload and shown from its local
+// copy while it uploads (`uploadDeferred` resolves with the uploaded wallpaper). Rejects when the
+// image cannot be prepared. Shared by the Chat Wallpaper grid and Settings → Expert → Appearance.
+export async function prepareWallPaperImageUpload(file: File) {
+  file = await prepareWallPaperImage(file);
+  const wallPaper = await rootScope.managers.appDocsManager.prepareWallPaperUpload(file);
+  // Seed ChatBackgroundStore with the local blob URL so the picker thumbnail
+  // (which now goes through `<ChatBackground>` → ChatBackgroundStore.getBackground)
+  // resolves the in-progress upload preview without trying to hit the network.
+  const uploadDoc = (wallPaper as WallPaper.wallPaper).document as Document.document;
+  if(uploadDoc) {
+    const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(uploadDoc);
+    ChatBackgroundStore.setBackgroundUrlToCache({
+      slug: (wallPaper as WallPaper.wallPaper).slug,
+      url: cacheContext.url
+    });
+  }
+  const uploadPromise = rootScope.managers.appDocsManager.uploadWallPaper(wallPaper.id);
+  const uploadDeferred: CancellablePromise<any> = appDownloadManager.getNewDeferredForUpload(file.name, uploadPromise);
+  const releaseUploadPreview = () => {
+    ChatBackgroundStore.deleteBackgroundUrlFromCache({
+      slug: (wallPaper as WallPaper.wallPaper).slug
+    });
+  };
+
+  return {wallPaper, uploadDeferred, releaseUploadPreview};
+}
+
 const needBlur = (wallPaper: WallPaper, respectPattern = true) => {
   const blur = (wallPaper as WallPaper.wallPaper)?.settings?.pFlags?.blur;
   return !!(blur && (!respectPattern || !(wallPaper as WallPaper.wallPaper).pFlags.pattern));
@@ -385,29 +415,17 @@ const ChatBackground = () => {
   });
 
   const onUploadClick = () => {
-    requestFile('image/x-png,image/png,image/jpeg').then(async(file) => {
+    requestFile(WALLPAPER_IMAGE_TYPES).then(async(file) => {
+      let upload: Awaited<ReturnType<typeof prepareWallPaperImageUpload>>;
       try {
-        file = await prepareWallPaperImage(file);
+        upload = await prepareWallPaperImageUpload(file);
       } catch(err) {
         console.error('wallpaper upload: cannot prepare the image', err);
         toastNew({langPackKey: 'Error.AnError'});
         return;
       }
 
-      const wallPaper = await rootScope.managers.appDocsManager.prepareWallPaperUpload(file);
-      // Seed ChatBackgroundStore with the local blob URL so the picker thumbnail
-      // (which now goes through `<ChatBackground>` → ChatBackgroundStore.getBackground)
-      // resolves the in-progress upload preview without trying to hit the network.
-      const uploadDoc = (wallPaper as WallPaper.wallPaper).document as Document.document;
-      if(uploadDoc) {
-        const cacheContext = await rootScope.managers.thumbsStorage.getCacheContext(uploadDoc);
-        ChatBackgroundStore.setBackgroundUrlToCache({
-          slug: (wallPaper as WallPaper.wallPaper).slug,
-          url: cacheContext.url
-        });
-      }
-      const uploadPromise = rootScope.managers.appDocsManager.uploadWallPaper(wallPaper.id);
-      const uploadDeferred: CancellablePromise<any> = appDownloadManager.getNewDeferredForUpload(file.name, uploadPromise);
+      const {wallPaper, uploadDeferred, releaseUploadPreview} = upload;
 
       const deferred = deferredPromise<void>();
       deferred.addNotifyListener = uploadDeferred.addNotifyListener.bind(uploadDeferred);
@@ -424,11 +442,6 @@ const ChatBackground = () => {
       }, deferred.reject.bind(deferred));
 
       const key = getWallPaperKey(wallPaper);
-      const releaseUploadPreview = () => {
-        ChatBackgroundStore.deleteBackgroundUrlFromCache({
-          slug: (wallPaper as WallPaper.wallPaper).slug
-        });
-      };
       deferred.then(releaseUploadPreview, releaseUploadPreview);
       deferred.catch((error: ApiError) => {
         container.remove();

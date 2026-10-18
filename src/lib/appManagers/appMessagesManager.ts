@@ -6795,7 +6795,8 @@ export class AppMessagesManager extends AppManager {
       }
 
       if(!cantDelete) {
-        cantDelete = !this.canDeleteMessage(message);
+        // * a saved deleted message can be selected and deleted with the others — from this device
+        cantDelete = !this.canDeleteMessage(message) && !isSavedDeletedMessage(message);
       }
 
       if(cantForward && cantDelete) break;
@@ -9619,6 +9620,13 @@ export class AppMessagesManager extends AppManager {
   }
 
   public deleteMessages(peerId: PeerId, mids: number[], revoke?: boolean) {
+    // * a message Expert kept after it was deleted is gone from the server: it only leaves this device
+    const savedDeletedMids = mids.filter((mid) => isSavedDeletedMessage(this.getMessageByPeer(peerId, mid)));
+    if(savedDeletedMids.length) {
+      this.dropSavedDeletedMessages(peerId, savedDeletedMids);
+      mids = mids.filter((mid) => !savedDeletedMids.includes(mid));
+    }
+
     const ephemeralMids: number[] = [];
     mids = mids.filter((mid) => {
       const message = this.getMessageByPeer(peerId, mid);

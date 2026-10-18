@@ -13,7 +13,10 @@ const cache: {
 } = {};
 
 const fonts: {[type in FontType]: string} = {
-  text: FontFamilyName,
+  // * the interface's face changes with Expert's design, so it is read when loading
+  get text() {
+    return FontFamilyName;
+  },
   icons: TGICO_CLASS,
   monospace: 'Roboto Mono'
 };

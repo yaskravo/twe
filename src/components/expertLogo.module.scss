@@ -1,0 +1,89 @@
+@use "../scss/mixins.scss" as *;
+
+.logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.tile {
+  fill: var(--primary-color);
+}
+
+.plane,
+.speedLine,
+.tile {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+// * shown for the first time: with reduced motion the tile and the plane fade in, and the speed lines
+// * one after another behind them
+.animated {
+  @include animation-level-global(1) {
+    .tile,
+    .plane,
+    .speedLine {
+      animation: fadeIn .2s ease-out both;
+    }
+
+    .plane {
+      animation-delay: .05s;
+    }
+
+    .speedLine {
+      animation-delay: calc(.12s + var(--i) * .05s);
+    }
+  }
+
+  // * with full motion the tile settles in, the plane flies in from the lower left past its place and
+  // * back, and the speed lines trail in after it
+  @include animation-level-global(2) {
+    .tile {
+      animation: tileIn .45s cubic-bezier(.3, 1.3, .5, 1) both;
+    }
+
+    .plane {
+      animation: planeIn .7s cubic-bezier(.22, .8, .24, 1) .1s both;
+    }
+
+    .speedLine {
+      animation: speedLineIn .35s cubic-bezier(.22, .8, .24, 1) calc(.45s + var(--i) * .06s) both;
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes tileIn {
+  from {
+    opacity: 0;
+    transform: scale(.85);
+  }
+}
+
+@keyframes planeIn {
+  0% {
+    opacity: 0;
+    transform: translate(-90%, 90%) rotate(-14deg) scale(.6);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  70% {
+    transform: translate(5%, -5%) rotate(3deg) scale(1.03);
+  }
+}
+
+@keyframes speedLineIn {
+  from {
+    opacity: 0;
+    transform: translate(80%, -80%);
+  }
+}

@@ -32,6 +32,10 @@ const cacheStorageDbConfig = {
   cachedBackgrounds: {
     encryptable: false
   },
+  // * a font file the user gave Expert (lib/expertCustomFont.ts)
+  cachedExpertFonts: {
+    encryptable: false
+  },
   cachedFiles: {
     encryptable: true
   },

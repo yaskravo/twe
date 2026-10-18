@@ -5,6 +5,10 @@ export type SavedDeletedMessage = Message.message & {
   deletedDate: number
 };
 
+// * what marks such a message next to its time (Settings → Expert): the word, or one of these icons
+export const DELETED_MESSAGE_MARKS = ['text', 'delete', 'eyecross'] as const;
+export type DeletedMessageMark = typeof DELETED_MESSAGE_MARKS[number];
+
 /**
  * A message someone else deleted that Expert kept on this device (Settings → Expert → Save deleted
  * messages). It no longer exists on the server, so it can only be read: nothing can be sent about

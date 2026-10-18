@@ -286,7 +286,9 @@ namespace I18n {
       if(TEST_LOCAL) pushLocal();
 
       // * the fork's own strings, which no server pack has, over the English that would stand in for them
-      const expertStrings = langExpert.default[langCode] ?? langExpert.default[langCode.split('-', 1)[0]];
+      // * a custom pack names the language it is a version of in base_lang_code
+      const findExpertStrings = (code: string) => code && (langExpert.default[code] ?? langExpert.default[code.split('-', 1)[0]]);
+      const expertStrings = findExpertStrings(langCode) || findExpertStrings(language?.base_lang_code);
       if(expertStrings) formatLocalStrings(expertStrings, strings);
 
       langPack1.strings = strings;
