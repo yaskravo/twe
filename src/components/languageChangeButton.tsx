@@ -49,8 +49,15 @@ export default function LanguageChangeButton(): JSX.Element {
   const [content, setContent] = createSignal<string>('');
   let suggestedLangCode: string;
 
-  const onLanguageApply = () => setVisible(false);
-  rootScope.addEventListener('language_apply', onLanguageApply, {once: true});
+  // * the button goes once the language it offers is applied. Not on the first apply that comes:
+  // * getLang applies the cached pack before the button shows, and a listener spent on that left
+  // * the button spinning forever after a press
+  const onLanguageApply = () => {
+    if(submitting()) {
+      setVisible(false);
+    }
+  };
+  rootScope.addEventListener('language_apply', onLanguageApply);
   onCleanup(() => rootScope.removeEventListener('language_apply', onLanguageApply));
 
   onMount(async() => {
@@ -70,7 +77,11 @@ export default function LanguageChangeButton(): JSX.Element {
   const onClick = () => {
     appliedAlready = true;
     setSubmitting(true);
-    I18n.getLangPackAndApply(suggestedLangCode);
+    // * a pack that did not come (no network) leaves the button to be pressed again
+    I18n.getLangPackAndApply(suggestedLangCode).catch(() => {
+      appliedAlready = false;
+      setSubmitting(false);
+    });
   };
 
   return (

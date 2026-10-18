@@ -1,5 +1,6 @@
 import pause from '@helpers/schedulers/pause';
 import textToSvgURL from '@helpers/textToSvgURL';
+import noop from '@helpers/noop';
 
 /**
  * Builds a Telegram-styled QR canvas for `data` using the supplied palette.
@@ -41,28 +42,35 @@ export type PaintQrOptions = {
 
 // The Telegram logo SVG is identical for a given tint every paint; fetch +
 // recolor + data-URL it once per colour instead of on every QR regenerate.
-const logoUrlCache = new Map<string, Promise<string>>();
-function getLogoUrl(logoColor: string): Promise<string> {
-  let url = logoUrlCache.get(logoColor);
-  if(!url) {
-    url = fetch('assets/img/logo_padded.svg')
+// The image is decoded up front too, so the logo can be drawn the moment the QR is.
+const logoUrlCache = new Map<string, Promise<{url: string, image: HTMLImageElement}>>();
+function getLogo(logoColor: string) {
+  let logo = logoUrlCache.get(logoColor);
+  if(!logo) {
+    logo = fetch('assets/img/logo_padded.svg')
     .then((res) => res.text())
-    .then((text) => textToSvgURL(text.replace(/(fill:).+?(;)/, `$1${logoColor}$2`)));
-    logoUrlCache.set(logoColor, url);
+    .then(async(text) => {
+      const url = await textToSvgURL(text.replace(/(fill:).+?(;)/, `$1${logoColor}$2`));
+      const image = new Image();
+      image.src = url;
+      await image.decode().catch(noop);
+      return {url, image};
+    });
+    logoUrlCache.set(logoColor, logo);
   }
-  return url;
+  return logo;
 }
 
 export async function paintQrCode(options: PaintQrOptions) {
   const {data, size, host, background, foreground, logoColor, pixelRatio = window.devicePixelRatio, QRCodeStylingCtor} = options;
 
-  const logoUrl = await getLogoUrl(logoColor);
+  const logo = await getLogo(logoColor);
 
   const qrCode = new QRCodeStylingCtor({
     width: size * pixelRatio,
     height: size * pixelRatio,
     data,
-    image: logoUrl,
+    image: logo.url,
     dotsOptions: {color: foreground, type: 'rounded'},
     cornersSquareOptions: {type: 'extra-rounded', color: foreground},
     imageOptions: {imageSize: 1, margin: 0},
@@ -97,6 +105,17 @@ export async function paintQrCode(options: PaintQrOptions) {
     ]);
   }
   await drawingPromise;
+
+  // * the library draws the logo through an SVG it rasterizes, and a browser may rasterize that
+  // * before the logo inside has loaded (Safari often does): the QR showed without it until the
+  // * next one. Drawn again here, from the decoded image, where the library placed it
+  const placed: SVGImageElement = qrCode._svg?.querySelector('image');
+  if(placed && logo.image.complete) {
+    const rect = ['x', 'y', 'width', 'height'].map((attr) => parseFloat(placed.getAttribute(attr)));
+    if(rect.every((value) => Number.isFinite(value))) {
+      canvas.getContext('2d')?.drawImage(logo.image, rect[0], rect[1], rect[2], rect[3]);
+    }
+  }
 
   return {canvas, qrCode};
 }

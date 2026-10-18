@@ -6,6 +6,8 @@ import isNativeVoiceRecorderSupported from '@helpers/voiceRecorder/isNativeSuppo
 import rootScope from '@lib/rootScope';
 
 import {disposeActiveAuthFlow} from '@/pages/mountAuthFlow';
+import IS_STANDALONE from '@environment/standalone';
+import noop from '@helpers/noop';
 
 let bootstrapped = false;
 
@@ -66,6 +68,13 @@ export async function bootstrapIm(): Promise<void> {
   setTimeout(() => {
     disposeActiveAuthFlow();
   }, 1000);
+
+  // * an installed app (a home screen web app on an iPhone) asks to keep its storage: without that
+  // * the system may clear it when space runs low, and the session kept there goes with it. Only
+  // * there — a browser tab of Firefox would ask the user about it
+  if(IS_STANDALONE) {
+    navigator.storage?.persist?.().catch(noop);
+  }
 
   // * an update: what it brings, once, in Expert's own popup
   if(apiManagerProxy.newVersion) {
