@@ -10,7 +10,7 @@ import {resolve} from 'path';
 import {existsSync, copyFileSync, readFileSync, realpathSync} from 'fs';
 import {createHash} from 'crypto';
 import {Plugin, ServerOptions} from 'vite';
-import {watchLangFile} from './watch-lang.js';
+import {watchLangFile, writeBuildVersion} from './watch-lang.js';
 import {watchScssTypes} from './scss-types.js';
 import {vitestWorkers} from './scripts/testQueue';
 import devChecks from './scripts/dev-checks.mjs';
@@ -41,6 +41,10 @@ const generateDevCssModuleScopedName = (name: string, filename: string) => {
 
 if(!existsSync(LANG_PACK_LOCAL_FILE_PATH)) {
   copyFileSync(path.join(rootDir, 'src', 'langPackLocalVersion.example.ts'), LANG_PACK_LOCAL_FILE_PATH);
+}
+
+if(!isDEV) {
+  writeBuildVersion();
 }
 
 if(isDEV) {

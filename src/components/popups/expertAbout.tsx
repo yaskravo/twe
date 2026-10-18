@@ -13,10 +13,14 @@ export const EXPERT_VERSIONS = ['2.3'];
 const SOURCE_URL = 'https://github.com/yaskravo/twe';
 const LICENSE_URL = 'https://www.gnu.org/licenses/gpl-3.0.html';
 
+// ! the notes are written in English, Russian and Ukrainian only, by the author's rule: every other
+// ! language reads the English, and no CHANGELOG_<lang>.md is added for one
+const RELEASE_NOTES_LANGS = new Set(['en', 'ru', 'uk']);
+
 // * a release's notes in the interface's language, or in English where there are none in it
 async function getReleaseNotes(version: string) {
   const langCode = (I18n.getLastRequestedLangCode() || 'en').split('-', 1)[0];
-  for(const lang of new Set([langCode, 'en'])) {
+  for(const lang of new Set([RELEASE_NOTES_LANGS.has(langCode) ? langCode : 'en', 'en'])) {
     const response = await fetch(`changelogs/${lang}_${version}.md`).catch((): Response => undefined);
     if(response?.ok) {
       const [text, entities] = parseMarkdown(await response.text(), []);

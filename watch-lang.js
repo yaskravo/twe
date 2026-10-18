@@ -76,6 +76,22 @@ ${HASH_PREFIX}${hash}
   }
 };
 
+// A build starts from a checkout that may have no version file (the site's, in CI) and would
+// ship the example's constant one: a client that cached the pack would then never fetch the strings
+// added since. Its version is taken from the strings themselves instead, so every build with other
+// strings tells the clients to fetch them again. A file already made for these strings stays.
+const writeBuildVersion = () => {
+  const hash = getStringsHash();
+  if(readVersionFile().hash === hash) {
+    return;
+  }
+
+  const version = parseInt(hash.slice(0, 12), 16);
+  fs.writeFileSync(EDIT_FILE_PATH, `const langPackLocalVersion = ${version};export default langPackLocalVersion;
+${HASH_PREFIX}${hash}
+`, 'utf8');
+};
+
 const checkFilesExist = () => {
   for(const filePath of LANG_FILES) {
     if(!fs.existsSync(filePath)) {
@@ -177,5 +193,6 @@ if(require.main === module) {
 module.exports = {
   watchLangFile,
   watchLangFileWithInterval,
-  updateVersionIfChanged
+  updateVersionIfChanged,
+  writeBuildVersion
 };

@@ -108,6 +108,7 @@ import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import CheckboxField from '@components/checkboxField';
+import GhostIcon from '@components/ghostIcon';
 import {useCollapsedCommunityDialogsKey} from '@stores/communities';
 import isCommunity from '@appManagers/utils/communities/isCommunity';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
@@ -782,7 +783,7 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       verify: () => IS_CALL_SUPPORTED || IS_CONFERENCE_CALL_SUPPORTED
     }, {
-      icon: 'eyecross',
+      iconElement: GhostIcon(),
       text: 'Expert.Ghost',
       onClick: () => {},
       checkboxField: ghostCheckbox,

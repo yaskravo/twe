@@ -609,6 +609,13 @@ $btn-menu-z-index: 4;
       .btn-menu-item-text {
         order: 1;
       }
+
+      // * a switch stands at the end of its item, as in Telegram's main menu, after the item's icon
+      // * and text (a check mark takes the icon's place instead)
+      .checkbox-field-toggle {
+        order: 2;
+        margin-inline-start: .75rem !important;
+      }
     }
   }
 

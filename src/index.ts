@@ -551,8 +551,9 @@ const isFramedByAnotherSite = () => {
 
   themeController.setThemeListener();
 
-  // * fetch lang pack updates
-  if((langPack.localVersion !== App.langPackLocalVersion || true) && IS_BETA) {
+  // * fetch lang pack updates: a cached pack made before the local strings changed (a new build of
+  // * the site) is made again, or the strings added since would show as their keys
+  if(langPack.localVersion !== App.langPackLocalVersion || IS_BETA) {
     I18n.getLangPackAndApply(langPack.lang_code);
   } else {
     checkLangPackForUpdates();

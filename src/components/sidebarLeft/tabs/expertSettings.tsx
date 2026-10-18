@@ -5,6 +5,7 @@ import {i18n} from '@lib/langPack';
 import {useSuperTab} from '@components/solidJsTabs/superTabProvider';
 import {AppExpertAppearanceTab, AppExpertDeletedMessagesTab, AppExpertPerformanceTab, type AppExpertSettingsTab} from '@components/solidJsTabs/tabs';
 import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import GhostIcon from '@components/ghostIcon';
 import App from '@config/app';
 
 // Settings → Expert: what the Expert fork adds on top of the client, a screen for each part.
@@ -30,7 +31,7 @@ export default function ExpertSettings() {
       {/* the same switch as in the side menu */}
       <Section caption="Expert.Ghost.Caption">
         <Row>
-          <Row.Icon icon="eyecross" />
+          <Row.Icon icon="eyecross">{GhostIcon('row-icon-icon')}</Row.Icon>
           <Row.CheckboxFieldToggle>
             <CheckboxFieldTsx stateKey={joinDeepPath('settings', 'expert', 'ghost', 'enabled')} toggle />
           </Row.CheckboxFieldToggle>
