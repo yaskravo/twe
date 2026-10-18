@@ -8,7 +8,7 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
 import {DEFAULT_THEME, SETTINGS_INIT} from '@config/state';
-import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_CORNER_SCALES, getExpertWallpaperColors, type ExpertWallpaper} from '@config/expertAppearance';
+import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_CORNER_SCALES, EXPERT_NIGHT_WALLPAPER_INTENSITY, getExpertWallpaperColors, type ExpertWallpaper} from '@config/expertAppearance';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import Modes from '@config/modes';
 import customProperties from '@helpers/dom/customProperties';
@@ -322,8 +322,8 @@ export class ThemeController {
 
   // * Expert's accent and wallpaper (config/expertAppearance.ts) take the place of what a built-in
   // * theme ships with only: its stock accent, its stock wallpaper. One picked in Telegram's own
-  // * settings stays, and one picked in Expert's puts the theme's back to stock (setExpertAccent,
-  // * setExpertWallpaper) — the last pick wins
+  // * settings stays, and one picked in Expert's puts the theme's back to stock (setExpertLook) — the
+  // * last pick wins
   private getStockThemeSettings(baseTheme: BaseTheme['_']) {
     return (DEFAULT_THEME.settings as ThemeSettings[]).find((s) => s.base_theme._ === baseTheme);
   }
@@ -359,6 +359,10 @@ export class ThemeController {
 
     const settings = {...stock.settings};
     WALLPAPER_COLOR_KEYS.forEach((key, i) => settings[key] = colors[i]);
+    if(baseTheme === 'baseThemeNight') {
+      settings.intensity = EXPERT_NIGHT_WALLPAPER_INTENSITY;
+    }
+
     return {...stock, settings};
   }
 
@@ -383,21 +387,22 @@ export class ThemeController {
     });
   }
 
-  public setExpertAccent(accent: number) {
-    useAppSettings()[1]('expert', 'accent', accent);
-    const own = this.getThemeSettings(this.getTheme());
-    if(own && !this.hasStockAccent(own) && this.getStockThemeSettings(own.base_theme._)) {
-      return this.applyStockThemeSettings((stock) => ({accent_color: stock.accent_color, message_colors: stock.message_colors}));
-    }
+  // * Expert's accent, wallpaper or both — a wallpaper is picked with its accent — applied to the theme
+  // * at once, the theme's own put back to stock where Expert's are to show
+  public setExpertLook(look: {accent?: number, wallpaper?: ExpertWallpaper}) {
+    const [, setAppSettings] = useAppSettings();
+    if(look.accent !== undefined) setAppSettings('expert', 'accent', look.accent);
+    if(look.wallpaper !== undefined) setAppSettings('expert', 'wallpaper', look.wallpaper);
 
-    this.setTheme();
-  }
-
-  public setExpertWallpaper(wallpaper: ExpertWallpaper) {
-    useAppSettings()[1]('expert', 'wallpaper', wallpaper);
     const own = this.getThemeSettings(this.getTheme());
-    if(wallpaper !== 'telegram' && own && !this.hasStockWallPaper(own) && this.getStockThemeSettings(own.base_theme._)) {
-      return this.applyStockThemeSettings((stock) => ({wallpaper: stock.wallpaper}));
+    const hasStock = !!own && !!this.getStockThemeSettings(own.base_theme._);
+    const resetAccent = hasStock && look.accent !== undefined && !this.hasStockAccent(own);
+    const resetWallPaper = hasStock && look.wallpaper !== undefined && look.wallpaper !== 'telegram' && !this.hasStockWallPaper(own);
+    if(resetAccent || resetWallPaper) {
+      return this.applyStockThemeSettings((stock) => ({
+        ...(resetAccent && {accent_color: stock.accent_color, message_colors: stock.message_colors}),
+        ...(resetWallPaper && {wallpaper: stock.wallpaper})
+      }));
     }
 
     this.setTheme();

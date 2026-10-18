@@ -12,7 +12,8 @@ import {InputFieldTsx} from '@components/inputFieldTsx';
 import {toastNew} from '@components/toast';
 import requestFile from '@helpers/files/requestFile';
 import {getInterfaceFontFamily, INTERFACE_FONTS} from '@config/font';
-import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_ACCENTS, EXPERT_CORNER_SCALES, EXPERT_WALLPAPER_CHOICES} from '@config/expertAppearance';
+import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_ACCENTS, EXPERT_CORNER_SCALES, EXPERT_WALLPAPER_CHOICES, getExpertWallpaperAccent} from '@config/expertAppearance';
+import {getRgbColorFromTelegramColor, mixColors, rgbaToHexa} from '@helpers/color';
 import RangeSettingSelector from '@components/rangeSettingSelector';
 import {IconTsx} from '@components/iconTsx';
 import ProgressivePreloader from '@components/preloader';
@@ -49,12 +50,20 @@ const readWallpaperState = () => {
   };
 };
 
+// * an outgoing bubble in an accent: a light tint of it by day, the accent itself at night
+const getOutgoingBubbleColor = (accent: number, baseTheme: BaseTheme['_']) => {
+  const rgb = getRgbColorFromTelegramColor(accent);
+  return rgbaToHexa(baseTheme === 'baseThemeNight' ? rgb : mixColors(rgb, [255, 255, 255], .3));
+};
+
 // * a wallpaper the way a chat shows it, with a bubble of each side — Telegram's own rendering and
 // * tile, as in its theme picker; or an icon, for a choice with nothing to show yet
 const WallpaperTile = (props: {
   active: boolean,
   wallPaper?: WallPaper,
   baseTheme: BaseTheme['_'],
+  // * the accent the wallpaper goes with, for the outgoing bubble
+  accent?: number,
   icon?: Icon,
   label: LangPackKey,
   onClick: (e: MouseEvent & {currentTarget: HTMLButtonElement}) => void
@@ -79,6 +88,7 @@ const WallpaperTile = (props: {
         ref={tile}
         type="button"
         class={classNames('theme-container', styles.tile, props.active && 'active', !props.wallPaper && styles.blank)}
+        style={props.accent !== undefined ? {'--light-filled-message-out-primary-color': getOutgoingBubbleColor(props.accent, props.baseTheme)} : undefined}
         aria-pressed={props.active}
         aria-label={I18n.format(props.label, true)}
         onClick={props.onClick}
@@ -184,7 +194,7 @@ export default function ExpertAppearance() {
                   style={{'--accent-circle-ring': toHex(color), '--accent-circle-fill-1': toHex(color)}}
                   aria-pressed={active()}
                   aria-label={I18n.format(name, true)}
-                  onClick={() => themeController.setExpertAccent(color)}
+                  onClick={() => themeController.setExpertLook({accent: color})}
                 >
                   <div class="accent-circle__inner" />
                 </button>
@@ -199,8 +209,9 @@ export default function ExpertAppearance() {
                 active={wallpaperState().stock && (appSettings.expert?.wallpaper || DEFAULT_EXPERT_WALLPAPER) === wallpaper}
                 wallPaper={themeController.getExpertWallPaper(wallpaper, wallpaperState().baseTheme)}
                 baseTheme={wallpaperState().baseTheme}
+                accent={getExpertWallpaperAccent(wallpaper)}
                 label={`Expert.Wallpaper.${wallpaper}` as LangPackKey}
-                onClick={() => themeController.setExpertWallpaper(wallpaper)}
+                onClick={() => themeController.setExpertLook({wallpaper, accent: getExpertWallpaperAccent(wallpaper)})}
               />
             )}</For>
             {/* the user's own: a colour or gradient in Telegram's editor, or a photo */}

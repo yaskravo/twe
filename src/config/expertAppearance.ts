@@ -23,16 +23,25 @@ export const EXPERT_CORNER_SCALES = [.5, .75, 1, 1.25, 1.5];
 export const DEFAULT_EXPERT_CORNERS = 2;
 
 // * the wallpapers: Telegram's pattern over warm gradients in place of its greens, blues and
-// * purples, one set of four colours for the light themes and one for the night
+// * purples — light ones for the light themes, dark ones for the night, drawn under a soft pattern
+// * (EXPERT_NIGHT_WALLPAPER_INTENSITY) rather than as Telegram's coloured lines on black — each with
+// * the accent it is picked with, the way a theme of Telegram's pairs its wallpaper with an accent
 export type ExpertWallpaper = 'apricot' | 'rose' | 'sunset' | 'sand' | 'honey' | 'telegram';
 type WallpaperColors = [number, number, number, number];
-export const EXPERT_WALLPAPERS: {[wallpaper in Exclude<ExpertWallpaper, 'telegram'>]: {light: WallpaperColors, night: WallpaperColors}} = {
-  apricot: {light: [0xfbe3c0, 0xf2b27a, 0xf8d29d, 0xe8956a], night: [0xffc48c, 0xee8a4f, 0xc2573a, 0x8c3b2b]},
-  rose: {light: [0xfde2d8, 0xf4a99a, 0xf9cdb9, 0xe88a8a], night: [0xffb3a0, 0xef7f78, 0xb84a5c, 0x6e2c43]},
-  sunset: {light: [0xffd29d, 0xf7a072, 0xf5a3a3, 0xd39bd6], night: [0xffb075, 0xf06f6f, 0xb05ba8, 0x5b3e9e]},
-  sand: {light: [0xf3ead8, 0xdccaa6, 0xefe2c6, 0xc9b28a], night: [0xe8d3a8, 0xc9a46b, 0x8e6f45, 0x4f3d2a]},
-  honey: {light: [0xfff0b8, 0xf6cf6a, 0xfbe39a, 0xeab14d], night: [0xffd36b, 0xe8a93a, 0xa8742a, 0x5e4320]}
+export const EXPERT_WALLPAPERS: {[wallpaper in Exclude<ExpertWallpaper, 'telegram'>]: {light: WallpaperColors, night: WallpaperColors, accent: number}} = {
+  apricot: {light: [0xfbe3c0, 0xf2b27a, 0xf8d29d, 0xe8956a], night: [0x3d2416, 0x5a3420, 0x2e1b12, 0x4d2c1a], accent: 0xF0812A},
+  rose: {light: [0xfde2d8, 0xf4a99a, 0xf9cdb9, 0xe88a8a], night: [0x3d1f2a, 0x5a2a3c, 0x2e1720, 0x4c2232], accent: 0xE05A9B},
+  sunset: {light: [0xffd29d, 0xf7a072, 0xf5a3a3, 0xd39bd6], night: [0x3d2230, 0x4d2848, 0x2b1830, 0x2c2452], accent: 0x8774E1},
+  sand: {light: [0xf3ead8, 0xdccaa6, 0xefe2c6, 0xc9b28a], night: [0x332a1e, 0x4a3c2a, 0x262017, 0x3f3424], accent: 0x1EA59C},
+  honey: {light: [0xfff0b8, 0xf6cf6a, 0xfbe39a, 0xeab14d], night: [0x382c12, 0x54401a, 0x2a2210, 0x4a3818], accent: 0x52A447}
 };
+export const EXPERT_NIGHT_WALLPAPER_INTENSITY = 40;
+// * Telegram's own wallpaper goes with Telegram's blue
+const TELEGRAM_WALLPAPER_ACCENT = 0x3390EC;
+
+export function getExpertWallpaperAccent(wallpaper: ExpertWallpaper) {
+  return EXPERT_WALLPAPERS[wallpaper as Exclude<ExpertWallpaper, 'telegram'>]?.accent ?? TELEGRAM_WALLPAPER_ACCENT;
+}
 export const EXPERT_WALLPAPER_CHOICES = [...Object.keys(EXPERT_WALLPAPERS), 'telegram'] as ExpertWallpaper[];
 export const DEFAULT_EXPERT_WALLPAPER: ExpertWallpaper = 'apricot';
 
