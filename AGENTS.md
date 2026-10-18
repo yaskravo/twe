@@ -693,6 +693,13 @@ client, whose RTL support is incomplete.
   in both directions and fails on a box that does not stand mirrored, and checks
   that a value slider runs from the right.
 
+## Expert (this fork)
+
+- **Release notes are written in English, Russian and Ukrainian only** — `CHANGELOG.md`,
+  `CHANGELOG_ru.md`, `CHANGELOG_uk.md`. Every other language reads the English in What's New
+  (`components/popups/expertAbout.tsx`); never add a `CHANGELOG_<lang>.md` for another language.
+  The interface strings (`lang.ts` + `langExpert.ts`) still go to every language the fork has.
+
 ## What NOT to Do
 
 (Style rules are in "Code Style"; the import-alias, `invokeApi`-from-UI, and
