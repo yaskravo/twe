@@ -2,6 +2,7 @@ import {MOUNT_CLASS_TO} from '@config/debug';
 import Modes from '@config/modes';
 import {useAppSettings} from '@stores/appSettings';
 import useReducedMotion from '@stores/reducedMotion';
+import isWeakDevice from '@helpers/isWeakDevice';
 
 export type LiteModeKey = 'all' | 'gif' | 'video' |
   'emoji' | 'emoji_panel' | 'emoji_messages' | 'emoji_appear' |
@@ -21,6 +22,13 @@ export type LiteModeKey = 'all' | 'gif' | 'video' |
  * The body carries the matching classes for SCSS (`@include animation-level()`).
  */
 export type AnimationLevel = 0 | 1 | 2;
+
+// * what Expert's light mode (Settings → Expert → Performance) turns off on top of the user's own
+// * choices: the effects that cost the most on a weak computer, with movement given up for fades
+const LIGHT_MODE_KEYS: Set<LiteModeKey> = new Set([
+  'blur', 'motion', 'chat_background', 'chat_spoilers', 'emoji_appear',
+  'effects', 'effects_premiumstickers', 'effects_reactions', 'effects_emoji'
+]);
 
 export class LiteMode {
   public isEnabled() {
@@ -42,9 +50,18 @@ export class LiteMode {
     return Modes.a11y && this.isReducedMotion();
   }
 
+  public isLightMode() {
+    const lightMode = useAppSettings()[0].expert?.lightMode;
+    return lightMode === 'on' || (lightMode !== 'off' && isWeakDevice());
+  }
+
   public isAvailable(key: LiteModeKey): boolean {
     // movement is a part of the interface animations, so it goes with them
     if(key === 'motion' && (!this.isAvailable('animations') || this.isMotionHeldBySystem())) {
+      return false;
+    }
+
+    if(LIGHT_MODE_KEYS.has(key) && this.isLightMode()) {
       return false;
     }
 

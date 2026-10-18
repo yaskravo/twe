@@ -61,11 +61,16 @@ const makeEdited = () => {
   return edited;
 };
 
-// Expert: a message someone deleted, kept on this device (see isSavedDeletedMessage)
+// Expert: a message someone deleted, kept on this device (see isSavedDeletedMessage). The word can
+// give its place to an icon (Settings → Expert), which the stylesheet draws: a change of the mark
+// reaches the messages on screen
 const makeDeleted = () => {
   const deleted = document.createElement('i');
   deleted.classList.add('time-edited', 'time-deleted', 'time-part');
-  _i18n(deleted, 'Expert.DeletedMessage');
+  const text = document.createElement('span');
+  text.classList.add('time-deleted-text');
+  _i18n(text, 'Expert.DeletedMessage');
+  deleted.append(text);
   return deleted;
 };
 

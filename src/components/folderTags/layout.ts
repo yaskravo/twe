@@ -5,7 +5,8 @@ import wrapTextWithEntities from '@lib/richTextProcessor/wrapTextWithEntities';
 
 // * these mirror `folderTag.module.scss`: the tags of a row are fitted to it before they are drawn,
 // * so the widths have to be known without laying anything out
-const FOLDER_TAG_FONT = `${FontWeightBold} 11px ${FontFamily}`;
+// * in the interface's font, which follows the design
+const getFolderTagFont = () => `${FontWeightBold} 11px ${FontFamily}`;
 const FOLDER_TAG_PADDING = 10;
 const FOLDER_TAG_EMOJI_SIZE = 13;
 const FOLDER_TAG_GAP = 4;
@@ -46,7 +47,7 @@ export function measureFolderTag(title: TextWithEntities | string) {
   }
   plain += text.slice(offset);
 
-  width = Math.ceil(getTextWidth(plain.toUpperCase(), FOLDER_TAG_FONT)) +
+  width = Math.ceil(getTextWidth(plain.toUpperCase(), getFolderTagFont())) +
     emojiCount * FOLDER_TAG_EMOJI_SIZE +
     FOLDER_TAG_PADDING;
   widths.set(key, width);

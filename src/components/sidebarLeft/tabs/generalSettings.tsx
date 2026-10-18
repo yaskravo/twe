@@ -114,7 +114,7 @@ const THEME_VARIANTS: [StateSettings['theme'], LangPackKey][] = [
   ['system', 'AutoNightSystemDefault']
 ];
 
-const ThemeSection = () => {
+export const ThemeSection = () => {
   const stateKey = joinDeepPath('settings', 'theme');
 
   // Live (id, name) of the global theme. `id` drives the shared picker's

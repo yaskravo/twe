@@ -3340,10 +3340,25 @@
   max-width: string.unquote('min(var(--max-content-width, 100%), var(--max-width))');
 }
 
-// * Expert: a message someone deleted, kept on this device, faded (Settings → Expert → Fade Deleted
-// * Messages); its "deleted" mark says the same in words
+// * Expert: a message someone deleted, kept on this device, semi-transparent (Settings → Expert →
+// * Deleted Messages); its "deleted" mark says the same in words
 .expert-fade-deleted .bubble.is-saved-deleted > .bubble-content-wrapper {
   opacity: .55;
+}
+
+// * the mark as the icon chosen in its place (`--expert-deleted-mark`, set by helpers/themeController.ts);
+// * the word stays for screen readers, at no size
+.expert-deleted-icon .time-deleted {
+  font-size: 0;
+
+  &::before {
+    content: var(--expert-deleted-mark);
+    font-family: '#{$tgico-font-family}';
+    font-size: 1rem;
+    font-style: normal;
+    line-height: 1;
+    vertical-align: middle;
+  }
 }
 
 .bubble.service {

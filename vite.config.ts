@@ -64,8 +64,8 @@ const handlebarsPlugin = handlebars({
   context: {
     title: 'Expert',
     description: 'Expert is an unofficial Telegram web client based on Telegram Web K.',
-    url: 'https://web.telegram.org/k/',
-    origin: 'https://web.telegram.org/'
+    url: 'https://yaskravo.github.io/twe/',
+    origin: 'https://yaskravo.github.io/twe/'
   }
 });
 

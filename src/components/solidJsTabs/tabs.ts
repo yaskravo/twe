@@ -260,6 +260,24 @@ export const AppExpertSettingsTab =
     getComponentModule: () => import('../sidebarLeft/tabs/expertSettings')
   });
 
+export const AppExpertDeletedMessagesTab =
+  scaffoldSolidJSTab({
+    title: 'Expert.DeletedMessages',
+    getComponentModule: () => import('../sidebarLeft/tabs/expertDeletedMessages')
+  });
+
+export const AppExpertPerformanceTab =
+  scaffoldSolidJSTab({
+    title: 'Expert.Performance',
+    getComponentModule: () => import('../sidebarLeft/tabs/expertPerformance')
+  });
+
+export const AppExpertAppearanceTab =
+  scaffoldSolidJSTab({
+    title: 'Expert.Design',
+    getComponentModule: () => import('../sidebarLeft/tabs/expertAppearance')
+  });
+
 
 export const AppChatBackgroundTab =
   scaffoldSolidJSTab({

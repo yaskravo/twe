@@ -1,0 +1,47 @@
+@use "../../../scss/variables.scss" as *;
+@use "../../../scss/mixins.scss" as *;
+
+// * the marks a deleted message can carry, as tiles that show themselves
+.marks {
+  display: flex;
+  gap: .5rem;
+  padding: .5rem 1rem;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 0;
+  height: 3.5rem;
+  border: none;
+  border-radius: .875rem;
+  background-color: var(--light-secondary-text-color);
+  color: var(--secondary-text-color);
+  font-size: 1.5rem;
+  cursor: pointer;
+  @include animation-level-transition(color .2s, background-color .2s, box-shadow .2s, $global: true);
+
+  @include hover-global() {
+    color: var(--primary-text-color);
+  }
+
+  :global(:where(.a11y)) &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.selected {
+  &,
+  &:hover {
+    color: var(--primary-color);
+  }
+
+  background-color: var(--light-primary-color);
+  box-shadow: inset 0 0 0 2px var(--primary-color);
+}
+
+.word {
+  font-size: .9375rem;
+}

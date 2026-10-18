@@ -1,13 +1,14 @@
 import type {AppTheme, AppThemeSettings} from '@config/state';
 import type {AccentPreset} from '@config/themePresets';
-import type {BaseTheme, Theme, ThemeSettings} from '@layer';
+import type {BaseTheme, Theme, ThemeSettings, WallPaper} from '@layer';
 import {blendWallpaperForTinted, presetThemeId, presetToThemeSettings} from '@config/themePresets';
 import type {AppBackgroundTab} from '@components/sidebarLeft/tabs/background';
 import type {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
-import {SETTINGS_INIT} from '@config/state';
+import {DEFAULT_THEME, SETTINGS_INIT} from '@config/state';
+import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_CORNER_SCALES, getExpertWallpaperColors, type ExpertWallpaper} from '@config/expertAppearance';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import Modes from '@config/modes';
 import customProperties from '@helpers/dom/customProperties';
@@ -22,6 +23,8 @@ import Transitions, {getTransition} from '@config/transitions';
 import {dispatchHeavyAnimationEvent} from '@hooks/useHeavyAnimationCheck';
 import noop from '@helpers/noop';
 import {createEffect, createRoot, on} from 'solid-js';
+import {getIconContent} from '@components/icon';
+import {DEFAULT_EXPERT_FONT, getInterfaceFontFamily, setInterfaceFont} from '@config/font';
 
 // Hard cap for the theme-switch view transition: how long heavy rendering (videos/stickers/
 // lottie) stays paused, and the deadline after which a stalled transition is force-finished so
@@ -191,25 +194,39 @@ const colorMap: {
 // * tinted derives every surface from its accent.
 const EXPERT_COLOR_MAP: typeof colorMap = {
   day: {
-    'background-color': '#F5F2ED',
-    'border-color': '#E6E0D7',
-    'secondary-color': '#CBC4BA'
+    'surface-color': '#FFF8EF',
+    'message-background-color': '#FFF8EF',
+    'background-color': '#F4EBDF',
+    'body-background-color': '#FFF8EF',
+    'border-color': '#E8DCCB',
+    'secondary-color': '#D0C3B1',
+    // * 4.7:1 on the background, 5.3:1 on the surface
+    'secondary-text-color': '#73665A',
+    'input-search-background-color': '#FFF8EF'
   },
   light: {
-    'background-color': '#F5F2ED',
-    'border-color': '#E6E0D7',
-    'secondary-color': '#CBC4BA'
+    'surface-color': '#FFF8EF',
+    'message-background-color': '#F6EEE3',
+    'background-color': '#F4EBDF',
+    'body-background-color': '#FFF8EF',
+    'border-color': '#E8DCCB',
+    'secondary-color': '#D0C3B1',
+    'secondary-text-color': '#73665A',
+    'input-search-background-color': '#FFF8EF'
   },
   night: {
-    'surface-color': '#221F1C',
-    'message-background-color': '#221F1C',
+    'surface-color': '#23201D',
+    'message-background-color': '#23201D',
     'background-color': '#181614',
     'body-background-color': '#181614',
-    'border-color': '#100E0C',
-    'secondary-color': '#77716A',
+    'border-color': '#0F0D0C',
+    'secondary-color': '#7A736B',
+    'secondary-text-color': '#A69D93',
     'input-search-background-color': '#181614'
   }
 };
+
+const WALLPAPER_COLOR_KEYS = ['background_color', 'second_background_color', 'third_background_color', 'fourth_background_color'] as const;
 
 const themeNameToBaseTheme: {[name in Exclude<AppTheme['name'], 'system'>]: BaseTheme['_']} = {
   day: 'baseThemeClassic',
@@ -303,9 +320,85 @@ export class ThemeController {
     return expertColors ? {...colors, ...expertColors} : colors;
   }
 
+  // * Expert's accent and wallpaper (config/expertAppearance.ts) take the place of what a built-in
+  // * theme ships with only: its stock accent, its stock wallpaper. One picked in Telegram's own
+  // * settings stays, and one picked in Expert's puts the theme's back to stock (setExpertAccent,
+  // * setExpertWallpaper) — the last pick wins
+  private getStockThemeSettings(baseTheme: BaseTheme['_']) {
+    return (DEFAULT_THEME.settings as ThemeSettings[]).find((s) => s.base_theme._ === baseTheme);
+  }
+
+  private hasStockAccent(settings: ThemeSettings | AppThemeSettings) {
+    return this.getStockThemeSettings(settings.base_theme?._)?.accent_color === settings.accent_color;
+  }
+
+  public hasStockWallPaper(settings: ThemeSettings | AppThemeSettings) {
+    const wallPaper = settings.wallpaper as WallPaper.wallPaper;
+    const stock = this.getStockThemeSettings(settings.base_theme?._)?.wallpaper as WallPaper.wallPaper;
+    return !!stock && !!wallPaper?.settings && wallPaper.slug === stock.slug &&
+      WALLPAPER_COLOR_KEYS.every((key) => wallPaper.settings[key] === stock.settings[key]);
+  }
+
+  private withExpertAccent<T extends ThemeSettings | AppThemeSettings>(themeName: string, settings: T): T {
+    if(!settings || themeName === 'tinted' || !this.isExpertDesign() || !this.hasStockAccent(settings)) {
+      return settings;
+    }
+
+    // * my messages take the accent too, as they do with any accent picked in Appearance
+    const accent = useAppSettings()[0].expert?.accent ?? DEFAULT_EXPERT_ACCENT;
+    return {...settings, accent_color: accent, message_colors: [accent]};
+  }
+
+  // * the wallpaper a theme shows behind the chats: its own, or Expert's in place of the stock
+  public getDisplayedWallPaper(theme: Theme | AppTheme): WallPaper {
+    const settings = this.getThemeSettings(theme);
+    const colors = this.isExpertDesign() && settings &&
+      getExpertWallpaperColors(useAppSettings()[0].expert?.wallpaper || DEFAULT_EXPERT_WALLPAPER, settings.base_theme?._);
+    if(!colors || !this.hasStockWallPaper(settings)) {
+      return settings?.wallpaper;
+    }
+
+    const wallPaper = settings.wallpaper as WallPaper.wallPaper;
+    const expertSettings = {...wallPaper.settings};
+    WALLPAPER_COLOR_KEYS.forEach((key, i) => expertSettings[key] = colors[i]);
+    return {...wallPaper, settings: expertSettings};
+  }
+
+  // * the theme as it is, with this base's stock entry — or a part of it — in place of its own
+  private applyStockThemeSettings(pick: (stock: ThemeSettings, own: AppThemeSettings) => Partial<AppThemeSettings>) {
+    const theme = this.getTheme();
+    const own = this.getThemeSettings(theme);
+    const stock = this.getStockThemeSettings(own.base_theme._);
+    return this.applyNewTheme({
+      ...(theme as any as Theme),
+      settings: (theme.settings as AppThemeSettings[]).map((s) => s === own ? {...s, ...pick(stock, own)} : s)
+    });
+  }
+
+  public setExpertAccent(accent: number) {
+    useAppSettings()[1]('expert', 'accent', accent);
+    const own = this.getThemeSettings(this.getTheme());
+    if(own && !this.hasStockAccent(own) && this.getStockThemeSettings(own.base_theme._)) {
+      return this.applyStockThemeSettings((stock) => ({accent_color: stock.accent_color, message_colors: stock.message_colors}));
+    }
+
+    this.setTheme();
+  }
+
+  public setExpertWallpaper(wallpaper: ExpertWallpaper) {
+    useAppSettings()[1]('expert', 'wallpaper', wallpaper);
+    const own = this.getThemeSettings(this.getTheme());
+    if(wallpaper !== 'telegram' && own && !this.hasStockWallPaper(own) && this.getStockThemeSettings(own.base_theme._)) {
+      return this.applyStockThemeSettings((stock) => ({wallpaper: stock.wallpaper}));
+    }
+
+    this.setTheme();
+  }
+
   // * Expert's appearance settings, as classes on <html> the stylesheets follow: the design is
   // * `.design-expert` (scss/partials/_expertDesign.scss) and its colours — switching it re-applies the
-  // * theme, which reads them — and `.expert-fade-deleted` fades the saved deleted messages
+  // * theme, which reads them — its font is `--font-regular`; `.expert-fade-deleted` fades the saved
+  // * deleted messages and `.expert-deleted-icon` with `--expert-deleted-mark` draws their mark
   private watchExpertAppearance() {
     if(this.expertAppearanceWatched) {
       return;
@@ -321,8 +414,39 @@ export class ThemeController {
         }
       }));
 
+      // * the classic design keeps Telegram's font, the stylesheets' own
       createEffect(() => {
-        document.documentElement.classList.toggle('expert-fade-deleted', appSettings.expert?.fadeDeletedMessages !== false);
+        const font = this.isExpertDesign() ? appSettings.expert?.font || DEFAULT_EXPERT_FONT : 'roboto';
+        const fontFamily = getInterfaceFontFamily(font, appSettings.expert?.deviceFont);
+        setInterfaceFont(fontFamily);
+        if(font === 'file') {
+          // * the text swaps to it once it is registered
+          import('@lib/expertCustomFont').then(({loadCustomFont}) => loadCustomFont());
+        }
+
+        const {style} = document.documentElement;
+        if(font === 'roboto') {
+          style.removeProperty('--font-regular');
+        } else {
+          style.setProperty('--font-regular', fontFamily);
+        }
+      });
+
+      createEffect(() => {
+        const scale = EXPERT_CORNER_SCALES[appSettings.expert?.corners ?? DEFAULT_EXPERT_CORNERS] ?? 1;
+        document.documentElement.style.setProperty('--expert-corner-scale', '' + scale);
+      });
+
+      createEffect(() => {
+        const {classList, style} = document.documentElement;
+        classList.toggle('expert-fade-deleted', appSettings.expert?.deletedLook !== 'normal');
+        const mark = appSettings.expert?.deletedMark || 'delete';
+        classList.toggle('expert-deleted-icon', mark !== 'text');
+        if(mark === 'text') {
+          style.removeProperty('--expert-deleted-mark');
+        } else {
+          style.setProperty('--expert-deleted-mark', `"${getIconContent(mark)}"`);
+        }
       });
     });
   }
@@ -845,7 +969,7 @@ export class ThemeController {
   public applyTheme(theme: Theme | AppTheme, element = document.documentElement, saveToCache?: boolean) {
     const themeName = this.getThemeName(theme);
     const isNight = this.isNightThemeName(themeName);
-    const themeSettings = this.getThemeSettings(theme, isNight);
+    const themeSettings = this.withExpertAccent(themeName, this.getThemeSettings(theme, isNight));
     const baseColors = this.getBaseColors(colorMap[themeName] ? themeName : (isNight ? 'night' : 'day'));
 
     let hsvTemp1 = rgbToHsv(...hexToRgb(baseColors['primary-color'])); // primary base

@@ -15,6 +15,9 @@ import {FontKey} from '@components/mediaEditor/types';
 import type {BotConnectionReview} from '@appManagers/appBusinessManager';
 import type {UnconfirmedAuthorization} from '@appManagers/appAccountManager';
 import type {ContactsSortMode} from '@appManagers/utils/users/sortContacts';
+import {DEFAULT_EXPERT_FONT, type InterfaceFont} from '@config/font';
+import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, type ExpertWallpaper} from '@config/expertAppearance';
+import type {DeletedMessageMark} from '@appManagers/utils/messages/isSavedDeletedMessage';
 
 // Factory tinted ("Dark") collapses onto the first base-color preset (blue) so the accent picker
 // can omit a separate "default" swatch — resetting to factory now reaches the same state the user
@@ -163,10 +166,25 @@ export type StateSettings = {
   expert: {
     // A message someone else deleted stays in its chat, marked as deleted, kept on this device only
     saveDeletedMessages: boolean,
-    // Those messages are shown faded rather than like any other
-    fadeDeletedMessages: boolean,
-    // Expert's own look (rounder shapes, the system font, warm neutrals) or Telegram's classic one
-    design: 'expert' | 'classic'
+    // Those messages are shown semi-transparent, or like any other
+    deletedLook: 'faded' | 'normal',
+    // What marks them next to the time: the word "deleted", or an icon in its place
+    deletedMark: DeletedMessageMark,
+    // Expert's own look (rounder shapes, a rounded font, warm neutrals) or Telegram's classic one
+    design: 'expert' | 'classic',
+    // Expert's accent and wallpaper, in place of a built-in theme's stock ones (config/expertAppearance.ts)
+    accent: number,
+    wallpaper: ExpertWallpaper,
+    // How round Expert's corners are: a step of EXPERT_CORNER_SCALES
+    corners: number,
+    // Expert's light mode for weak computers (helpers/liteMode.ts): on, off, or on where the device looks weak
+    lightMode: 'auto' | 'on' | 'off',
+    // The font Expert's design draws the interface in (config/font.ts)
+    font: InterfaceFont,
+    // The name of a font installed on the device, for `font: 'device'`
+    deviceFont: string,
+    // The name of the font file the user gave, for `font: 'file'` (the file is in lib/expertCustomFont.ts)
+    fontFileName: string
   },
   mediaEditor: {
     colorByBrush?: Partial<Record<ColoredBrushType, SavedBrushColor>>;
@@ -601,8 +619,16 @@ export const SETTINGS_INIT: StateSettings = {
   showArchiveInChatList: true,
   expert: {
     saveDeletedMessages: true,
-    fadeDeletedMessages: true,
-    design: 'expert'
+    deletedLook: 'faded',
+    deletedMark: 'delete',
+    design: 'expert',
+    accent: DEFAULT_EXPERT_ACCENT,
+    wallpaper: DEFAULT_EXPERT_WALLPAPER,
+    corners: DEFAULT_EXPERT_CORNERS,
+    lightMode: 'auto',
+    font: DEFAULT_EXPERT_FONT,
+    deviceFont: '',
+    fontFileName: ''
   },
   mediaEditor: {
     colorByBrush: {}

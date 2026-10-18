@@ -1445,6 +1445,18 @@ export default class ChatContextMenu {
       verify: async() => !isAnchoredEphemeralMessage(this.message) &&
         this.managers.appMessagesManager.canDeleteMessage(this.message)
     }, {
+      // a message Expert kept after it was deleted goes from this device only — there is nothing left on the server
+      icon: 'delete',
+      className: 'danger',
+      text: 'Expert.DeleteFromDevice',
+      savedDeleted: true,
+      onClick: () => {
+        const {peerId} = this.message;
+        const mids = this.groupedMessages ? this.groupedMessages.map((message) => message.mid) : [this.message.mid];
+        this.managers.appMessagesManager.dropSavedDeletedMessages(peerId, mids);
+      },
+      verify: () => isSavedDeletedMessage(this.message)
+    }, {
       // an anchored ephemeral message is not deleted — dismissing it gives the reader back the
       // message the bot was standing in front of
       // what it does goes on a second line of the item itself, as in Android and desktop

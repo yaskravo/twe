@@ -25,6 +25,7 @@ import {CardSpec, useAuthFlow} from '@/pages/authFlow';
 import {continueLogin} from '@/pages/continueLogin';
 import styles from '@/pages/authFlow.module.scss';
 import {preloadTrackingMonkey} from '@components/monkeys/tracking';
+import ExpertLogo from '@components/expertLogo';
 
 if(import.meta.hot) import.meta.hot.accept();
 
@@ -238,9 +239,7 @@ export default function SignInCard(_props: {spec: Spec}) {
             class={styles.logoContainer}
             size={120}
             element={
-              <svg class={styles.logo} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160">
-                <use href="#logo"/>
-              </svg>
+              <ExpertLogo animated />
             }
           />
           <MediaHeader.Title tag="h1">{i18n('Login.Title')}</MediaHeader.Title>
