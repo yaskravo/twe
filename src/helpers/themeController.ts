@@ -8,7 +8,7 @@ import IS_TOUCH_SUPPORTED from '@environment/touchSupport';
 import rootScope from '@lib/rootScope';
 import {changeColorAccent, ColorRgb, ensureTextContrast, getAccentColor, getAverageColor, getRgbColorFromTelegramColor, hexToRgb, hslaStringToHex, hslaStringToRgba, hslaToRgba, hsvToRgb, mixColors, relativeLuminance, rgbaToHexa, rgbaToHsla, rgbToHsv} from '@helpers/color';
 import {DEFAULT_THEME, SETTINGS_INIT} from '@config/state';
-import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_CORNER_SCALES, EXPERT_NIGHT_WALLPAPER_INTENSITY, getExpertWallpaperColors, type ExpertWallpaper} from '@config/expertAppearance';
+import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_CORNER_SCALES, EXPERT_NIGHT_WALLPAPER_INTENSITY, getExpertWallpaperAccent, getExpertWallpaperColors, type ExpertWallpaper} from '@config/expertAppearance';
 import {MOUNT_CLASS_TO} from '@config/debug';
 import Modes from '@config/modes';
 import customProperties from '@helpers/dom/customProperties';
@@ -344,8 +344,13 @@ export class ThemeController {
       return settings;
     }
 
-    // * my messages take the accent too, as they do with any accent picked in Appearance
-    const accent = useAppSettings()[0].expert?.accent ?? DEFAULT_EXPERT_ACCENT;
+    // * an Expert background comes with its own accent; the user's own background (a colour, a
+    // * gradient, a photo) takes the one picked for it. My messages take it too, as they do with any
+    // * accent picked in Appearance
+    const expert = useAppSettings()[0].expert;
+    const accent = this.hasStockWallPaper(settings) ?
+      getExpertWallpaperAccent(expert?.wallpaper || DEFAULT_EXPERT_WALLPAPER) :
+      expert?.accent ?? DEFAULT_EXPERT_ACCENT;
     return {...settings, accent_color: accent, message_colors: [accent]};
   }
 
@@ -387,8 +392,8 @@ export class ThemeController {
     });
   }
 
-  // * Expert's accent, wallpaper or both — a wallpaper is picked with its accent — applied to the theme
-  // * at once, the theme's own put back to stock where Expert's are to show
+  // * Expert's wallpaper (which brings its accent) or the accent for the user's own background, applied
+  // * to the theme at once, the theme's own put back to stock where Expert's are to show
   public setExpertLook(look: {accent?: number, wallpaper?: ExpertWallpaper}) {
     const [, setAppSettings] = useAppSettings();
     if(look.accent !== undefined) setAppSettings('expert', 'accent', look.accent);
@@ -396,7 +401,7 @@ export class ThemeController {
 
     const own = this.getThemeSettings(this.getTheme());
     const hasStock = !!own && !!this.getStockThemeSettings(own.base_theme._);
-    const resetAccent = hasStock && look.accent !== undefined && !this.hasStockAccent(own);
+    const resetAccent = hasStock && (look.accent !== undefined || look.wallpaper !== undefined) && !this.hasStockAccent(own);
     const resetWallPaper = hasStock && look.wallpaper !== undefined && look.wallpaper !== 'telegram' && !this.hasStockWallPaper(own);
     if(resetAccent || resetWallPaper) {
       return this.applyStockThemeSettings((stock) => ({

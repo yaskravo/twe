@@ -301,15 +301,16 @@ export default function showChatPreviewPopup(options: ChatPreviewOptions): void 
           managers.appMessagesManager.markDialogUnread({
             peerId: options.peerId,
             monoforumThreadId: options.monoforumThreadId,
-            read: isUnread
+            read: isUnread,
+            explicit: true
           });
         } else if(isUnread) {
           if(!options.threadId) {
-            managers.appMessagesManager.markDialogUnread({peerId: options.peerId, read: true});
+            managers.appMessagesManager.markDialogUnread({peerId: options.peerId, read: true, explicit: true});
           } else {
             const topMessage = (dialog as any).top_message;
             if(topMessage) {
-              managers.appMessagesManager.readHistory({peerId: options.peerId, maxId: topMessage, threadId: options.threadId});
+              managers.appMessagesManager.readHistory({peerId: options.peerId, maxId: topMessage, threadId: options.threadId, explicit: true});
             }
           }
         } else if(!options.threadId) {

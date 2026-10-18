@@ -1,12 +1,9 @@
 import type {StateSettings} from '@config/state';
 
-// * Expert's ghost mode (Settings → Expert → Ghost Mode): the traces of the user's presence that are
-// * not sent. Nothing is sent in their place, so to the server it is a client that simply does not
-// * read, type, go online or watch stories — no request it would not otherwise see.
-export type GhostTrace = 'read' | 'typing' | 'online' | 'stories';
-export const GHOST_TRACES: GhostTrace[] = ['read', 'typing', 'online', 'stories'];
-
-export default function isGhost(settings: StateSettings, trace: GhostTrace) {
-  const ghost = settings?.expert?.ghost;
-  return !!ghost?.enabled && ghost[trace] !== false;
+// * Expert's ghost mode (the side menu, Settings → Expert): nothing tells others the user is here —
+// * chats are read on this device only, no "typing…", the status stays offline, stories are watched
+// * unseen. It only holds requests back and never sends one an official client would not: what the
+// * user does on purpose (a message sent, Mark as Read) still goes out, the way any client sends it
+export default function isGhost(settings: StateSettings) {
+  return !!settings?.expert?.ghost?.enabled;
 }

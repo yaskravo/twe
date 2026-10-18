@@ -5,8 +5,9 @@ import type {LangPackKey} from '@lib/langPack';
 // * stand in for what a built-in theme ships with only — its stock accent, its stock wallpaper — so
 // * an accent or a wallpaper picked in Telegram's own settings stays.
 
-// * the accents to pick from, named by Telegram's own colour names; orange first, across the colour
-// * wheel from the purple of Telegram's night theme
+// * the accents to pick from for the user's own background (Expert's bring theirs), named by
+// * Telegram's own colour names; orange first, across the colour wheel from the purple of Telegram's
+// * night theme
 export const EXPERT_ACCENTS: {color: number, name: LangPackKey}[] = [
   {color: 0xF0812A, name: 'ColorOrange'},
   {color: 0xE5533D, name: 'ColorRed'},

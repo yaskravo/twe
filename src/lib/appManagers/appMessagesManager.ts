@@ -476,13 +476,17 @@ type ReadHistoryArgs = {
   maxId?: number,
   threadId?: number,
   monoforumThreadId?: PeerId,
-  force?: boolean
+  force?: boolean,
+  // * the user's own doing (a message sent, Mark as Read): read on the server in ghost mode too
+  explicit?: boolean
 };
 
 type MarkDialogUnreadArgs = {
   peerId: PeerId,
   read?: boolean,
-  monoforumThreadId?: PeerId
+  monoforumThreadId?: PeerId,
+  // * Mark as Read picked by the user (ReadHistoryArgs.explicit), not a chat opened
+  explicit?: boolean
 };
 
 type FlushHistoryArgs = {
@@ -8661,7 +8665,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public async markDialogUnread({peerId, read, monoforumThreadId}: MarkDialogUnreadArgs) {
+  public async markDialogUnread({peerId, read, monoforumThreadId, explicit}: MarkDialogUnreadArgs) {
     const dialog = monoforumThreadId ?
       this.monoforumDialogsStorage.getDialogByParent(peerId, monoforumThreadId) :
       this.getDialogOnly(peerId);
@@ -8676,7 +8680,7 @@ export class AppMessagesManager extends AppManager {
     ) {
       const folder = this.dialogsStorage.getFolder(peerId);
       for(const topicId of folder.unreadPeerIds) {
-        this.readForumTopic(peerId, topicId);
+        this.readForumTopic(peerId, topicId, explicit);
       }
       return;
     }
@@ -8688,7 +8692,8 @@ export class AppMessagesManager extends AppManager {
         peerId,
         monoforumThreadId,
         maxId: dialog.top_message,
-        force: true
+        force: true,
+        explicit
       });
       if(!dialog.pFlags.unread_mark) {
         return promise;
@@ -8807,7 +8812,7 @@ export class AppMessagesManager extends AppManager {
    * cannot take it (it went away under the selection) does not hold back the rest.
    */
   public markDialogsUnread({peerIds, read}: {peerIds: PeerId[], read?: boolean}) {
-    return Promise.all(peerIds.map((peerId) => this.markDialogUnread({peerId, read}).catch(noop))).then(noop);
+    return Promise.all(peerIds.map((peerId) => this.markDialogUnread({peerId, read, explicit: true}).catch(noop))).then(noop);
   }
 
   /**
@@ -8841,9 +8846,9 @@ export class AppMessagesManager extends AppManager {
   }
 
   /** Reads a topic of a forum up to the message it ends with */
-  private readForumTopic(peerId: PeerId, topicId: number) {
+  private readForumTopic(peerId: PeerId, topicId: number, explicit?: boolean) {
     const topic = this.dialogsStorage.getForumTopic(peerId, topicId);
-    return this.readHistory({peerId, maxId: topic.top_message, threadId: topicId, force: true});
+    return this.readHistory({peerId, maxId: topic.top_message, threadId: topicId, force: true, explicit});
   }
 
   /** Reads several topics of one forum at once; one that has nothing unread is left alone */
@@ -8853,7 +8858,7 @@ export class AppMessagesManager extends AppManager {
         return;
       }
 
-      return this.readForumTopic(peerId, topicId).catch(noop);
+      return this.readForumTopic(peerId, topicId, true).catch(noop);
     })).then(noop);
   }
 
@@ -9683,7 +9688,7 @@ export class AppMessagesManager extends AppManager {
     }
   }
 
-  public readHistory({peerId, maxId = 0, threadId, monoforumThreadId, force = false}: ReadHistoryArgs) {
+  public readHistory({peerId, maxId = 0, threadId, monoforumThreadId, force = false, explicit}: ReadHistoryArgs) {
     if(DO_NOT_READ_HISTORY) {
       return Promise.resolve();
     }
@@ -9745,7 +9750,8 @@ export class AppMessagesManager extends AppManager {
     // user can scroll into messages whose mid <= a previously-read maxId
     // (e.g. messages loaded later, or scrolling up after a fast jump to bottom).
     // Without this, the unread counter "freezes" mid-scroll on high-volume chats.
-    const skipServerCall = historyStorage.triedToReadMaxId >= maxId || !!historyStorage.readPromise || isGhost(this.appStateManager.settings, 'read');
+    const ghost = !explicit && isGhost(this.appStateManager.settings);
+    const skipServerCall = ghost || historyStorage.triedToReadMaxId >= maxId || !!historyStorage.readPromise;
 
     let apiPromise: Promise<any>;
     if(monoforumThreadId) {
@@ -9833,8 +9839,9 @@ export class AppMessagesManager extends AppManager {
     this.rootScope.dispatchEvent('notification_reset', this.appPeersManager.getPeerString(peerId));
 
     // Track the highest maxId we've locally applied so future overlapping calls
-    // can correctly decide whether the server call is still needed.
-    if(!(historyStorage.triedToReadMaxId >= maxId)) {
+    // can correctly decide whether the server call is still needed. What ghost mode read is still
+    // unread on the server, so a later read of it (explicit, or with ghost mode off) goes there.
+    if(!ghost && !(historyStorage.triedToReadMaxId >= maxId)) {
       historyStorage.triedToReadMaxId = maxId;
     }
 
@@ -9861,10 +9868,10 @@ export class AppMessagesManager extends AppManager {
     return historyStorage.readPromise = apiPromise;
   }
 
-  public readAllHistory(peerId: PeerId, threadId?: number, force = false) {
+  public readAllHistory(peerId: PeerId, threadId?: number, force = false, explicit?: boolean) {
     const historyStorage = this.getHistoryStorage(peerId, threadId);
     if(historyStorage.maxId) {
-      this.readHistory({peerId, maxId: historyStorage.maxId, threadId, force}); // lol
+      this.readHistory({peerId, maxId: historyStorage.maxId, threadId, force, explicit}); // lol
     }
   }
 
@@ -10097,10 +10104,12 @@ export class AppMessagesManager extends AppManager {
   }
 
   public readMessages(peerId: PeerId, msgIds: number[]) {
-    // * ghost mode: a voice message stays unlistened, a mention unread
-    if(DO_NOT_READ_HISTORY || isGhost(this.appStateManager.settings, 'read')) {
+    if(DO_NOT_READ_HISTORY) {
       return Promise.resolve();
     }
+
+    // * ghost mode: a voice or video message is listened to here only, its sender is not told
+    const ghost = isGhost(this.appStateManager.settings);
 
     msgIds = msgIds.filter((mid) => (
       !this.isEphemeralMessageId(mid) &&
@@ -10157,7 +10166,7 @@ export class AppMessagesManager extends AppManager {
         messages: msgIds
       };
 
-      promise = this.apiManager.invokeApi('channels.readMessageContents', {
+      promise = ghost ? Promise.resolve() : this.apiManager.invokeApi('channels.readMessageContents', {
         channel: this.appChatsManager.getChannelInput(channelId),
         id: msgIds
       });
@@ -10169,7 +10178,7 @@ export class AppMessagesManager extends AppManager {
         pts_count: undefined
       };
 
-      promise = this.apiManager.invokeApi('messages.readMessageContents', {
+      promise = ghost ? Promise.resolve() : this.apiManager.invokeApi('messages.readMessageContents', {
         id: msgIds
       }).then((affectedMessages) => {
         (update as Update.updateReadMessagesContents).pts = affectedMessages.pts;
@@ -10194,8 +10203,9 @@ export class AppMessagesManager extends AppManager {
     return promise;
   }
 
+  // * the user's own counters only, nobody else is told — so ghost mode lets it through
   public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean, isPollVote?: boolean): Promise<boolean> {
-    if(DO_NOT_READ_HISTORY || isGhost(this.appStateManager.settings, 'read')) {
+    if(DO_NOT_READ_HISTORY) {
       return;
     }
 
@@ -10814,6 +10824,10 @@ export class AppMessagesManager extends AppManager {
     const channelId = this.appPeersManager.isChannel(peerId) ? peerId.toChatId() : undefined;
     const mid = this.appMessagesIdsManager.generateMessageId(update.id, channelId);
     this.pendingByMessageId[mid] = randomId;
+
+    if(isGhost(this.appStateManager.settings)) {
+      this.appUsersManager.goOfflineAfterGhostSend();
+    }
     // const {storage} = pendingData;
     // const message = this.getMessageFromStorage(storage, mid);
     // if(message) { // if message somehow already exists
@@ -14671,9 +14685,9 @@ export class AppMessagesManager extends AppManager {
       peerId === this.appPeersManager.peerId ||
       (!force && !isDraftAction && typing?.action?._ === action._) ||
       this.appPeersManager.isMonoforum(peerId) ||
-      // * ghost mode: no "typing…", "recording…" or "sending a photo…" for others to see (a draft
-      // * being streamed is the message itself, not a trace)
-      (!isDraftAction && isGhost(this.appStateManager.settings, 'typing'))
+      // * ghost mode: no "typing…", "recording…", "choosing a sticker…" or "watching an emoji" for
+      // * others to see; only stopping a bot's answer, which the user asks for, goes out
+      (action._ !== 'sendMessageStopDraftAction' && isGhost(this.appStateManager.settings))
     ) {
       return Promise.resolve(false);
     }

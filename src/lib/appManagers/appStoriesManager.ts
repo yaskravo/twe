@@ -1377,7 +1377,7 @@ export default class AppStoriesManager extends AppManager {
     });
 
     // * ghost mode: a story seen here is not seen for its author
-    if(TEST_READ || isGhost(this.appStateManager.settings, 'stories')) {
+    if(TEST_READ || isGhost(this.appStateManager.settings)) {
       return;
     }
 
@@ -1391,7 +1391,7 @@ export default class AppStoriesManager extends AppManager {
   }
 
   public incrementStoryViews(peerId: PeerId, ids: StoryItem['id'][]) {
-    if(isGhost(this.appStateManager.settings, 'stories')) {
+    if(isGhost(this.appStateManager.settings)) {
       return Promise.resolve(true);
     }
 

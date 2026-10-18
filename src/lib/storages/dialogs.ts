@@ -2003,7 +2003,7 @@ export default class DialogsStorage extends AppManager {
       return !excludedPeerIds?.has(peerId);
     });
     for(const peerId of peerIds) {
-      await this.appMessagesManager.markDialogUnread({peerId, read: true});
+      await this.appMessagesManager.markDialogUnread({peerId, read: true, explicit: true});
     }
   }
 

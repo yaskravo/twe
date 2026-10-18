@@ -7,6 +7,7 @@
 
 import filterUnique from '@helpers/array/filterUnique';
 import isGhost from '@appManagers/utils/expertGhost';
+import ctx from '@environment/ctx';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import cleanSearchText, {ProcessSearchTextOptions, processSearchText} from '@helpers/cleanSearchText';
@@ -1298,8 +1299,9 @@ export class AppUsersManager extends AppManager {
   // * ghost mode: the user is not online for others. The first status after it is on says "offline" —
   // * the request a client sends when it is put away — and no status follows until it is off again
   private ghostOfflineSent: boolean;
+  private ghostOfflineTimeout: number;
   public updateMyOnlineStatus(offline: boolean) {
-    if(isGhost(this.appStateManager.settings, 'online')) {
+    if(isGhost(this.appStateManager.settings)) {
       if(this.ghostOfflineSent) {
         return Promise.resolve(true);
       }
@@ -1312,6 +1314,18 @@ export class AppUsersManager extends AppManager {
 
     this.setUserStatus(this.getSelf().id, offline);
     return this.apiManager.invokeApiSingle('account.updateStatus', {offline});
+  }
+
+  // * ghost mode: a message the user sent counts as being online on the server, so "offline" follows
+  // * it a moment later — once for a burst of messages, an album, a forward of many
+  public goOfflineAfterGhostSend() {
+    clearTimeout(this.ghostOfflineTimeout);
+    this.ghostOfflineTimeout = ctx.setTimeout(() => {
+      if(isGhost(this.appStateManager.settings)) {
+        this.setUserStatus(this.getSelf().id, true);
+        this.apiManager.invokeApiSingle('account.updateStatus', {offline: true});
+      }
+    }, 1000);
   }
 
   public addContact(

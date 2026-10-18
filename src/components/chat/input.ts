@@ -4733,8 +4733,9 @@ export default class ChatInput {
   }
 
   public onMessageSent(clearInput = true, clearReply?: boolean, skipReadHistory = false) {
+    // * explicit: a reply reads the chat on the server, in ghost mode too, as it does in any client
     if(!skipReadHistory && !PEER_EXCEPTIONS.has(this.chat.type)) {
-      this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true);
+      this.managers.appMessagesManager.readAllHistory(this.chat.peerId, this.chat.threadId, true, true);
     }
 
     this.resetSendingFlags();

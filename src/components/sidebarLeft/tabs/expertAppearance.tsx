@@ -110,8 +110,8 @@ const FONT_NAMES: {[font in typeof INTERFACE_FONTS[number]]: () => JSX.Element} 
   roboto: () => i18n('Expert.Font.Telegram')
 };
 
-// Settings → Expert → Appearance: Expert's look or Telegram's, and what the look is made of — accent,
-// chat background, corners, text size, font. Telegram's own theme settings stay in General Settings.
+// Settings → Expert → Appearance: Expert's look or Telegram's, and what the look is made of — chat
+// background and, for the user's own, its accent, corners, text size, font. Telegram's own theme settings stay in General Settings.
 export default function ExpertAppearance() {
   const [tab] = useSuperTab<typeof AppExpertAppearanceTab>();
   const [appSettings, setAppSettings] = useAppSettings();
@@ -183,25 +183,6 @@ export default function ExpertAppearance() {
         </form>
       </Section>
       <Show when={appSettings.expert?.design !== 'classic'}>
-        <Section name="Expert.Accent">
-          <div class={styles.swatches}>
-            <For each={EXPERT_ACCENTS}>{({color, name}) => {
-              const active = () => (appSettings.expert?.accent ?? DEFAULT_EXPERT_ACCENT) === color;
-              return (
-                <button
-                  type="button"
-                  class={classNames('accent-circle', styles.swatch, active() && 'accent-circle--active')}
-                  style={{'--accent-circle-ring': toHex(color), '--accent-circle-fill-1': toHex(color)}}
-                  aria-pressed={active()}
-                  aria-label={I18n.format(name, true)}
-                  onClick={() => themeController.setExpertLook({accent: color})}
-                >
-                  <div class="accent-circle__inner" />
-                </button>
-              );
-            }}</For>
-          </div>
-        </Section>
         <Section name="Expert.Wallpaper" caption="Expert.Wallpaper.Caption">
           <div class={styles.wallpapers}>
             <For each={EXPERT_WALLPAPER_CHOICES}>{(wallpaper) => (
@@ -211,7 +192,7 @@ export default function ExpertAppearance() {
                 baseTheme={wallpaperState().baseTheme}
                 accent={getExpertWallpaperAccent(wallpaper)}
                 label={`Expert.Wallpaper.${wallpaper}` as LangPackKey}
-                onClick={() => themeController.setExpertLook({wallpaper, accent: getExpertWallpaperAccent(wallpaper)})}
+                onClick={() => themeController.setExpertLook({wallpaper})}
               />
             )}</For>
             {/* the user's own: a colour or gradient in Telegram's editor, or a photo */}
@@ -233,6 +214,28 @@ export default function ExpertAppearance() {
             />
           </div>
         </Section>
+        {/* Expert's backgrounds bring their accents; the user's own takes one picked here */}
+        <Show when={!wallpaperState().stock}>
+          <Section name="Expert.Accent">
+            <div class={styles.swatches}>
+              <For each={EXPERT_ACCENTS}>{({color, name}) => {
+                const active = () => (appSettings.expert?.accent ?? DEFAULT_EXPERT_ACCENT) === color;
+                return (
+                  <button
+                    type="button"
+                    class={classNames('accent-circle', styles.swatch, active() && 'accent-circle--active')}
+                    style={{'--accent-circle-ring': toHex(color), '--accent-circle-fill-1': toHex(color)}}
+                    aria-pressed={active()}
+                    aria-label={I18n.format(name, true)}
+                    onClick={() => themeController.setExpertLook({accent: color})}
+                  >
+                    <div class="accent-circle__inner" />
+                  </button>
+                );
+              }}</For>
+            </div>
+          </Section>
+        </Show>
       </Show>
       <Section name="Expert.Elements">
         <RangeSettingSelector

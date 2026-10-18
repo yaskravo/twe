@@ -1532,7 +1532,7 @@ export class AppCommunitiesManager extends AppManager {
         return;
       }
 
-      await this.appMessagesManager.markDialogUnread({peerId, read: true});
+      await this.appMessagesManager.markDialogUnread({peerId, read: true, explicit: true});
     }
     if(!this.isCommunityDataCurrent(
       currentState.communityId,

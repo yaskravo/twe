@@ -278,12 +278,6 @@ export const AppExpertAppearanceTab =
     getComponentModule: () => import('../sidebarLeft/tabs/expertAppearance')
   });
 
-export const AppExpertGhostTab =
-  scaffoldSolidJSTab({
-    title: 'Expert.Ghost',
-    getComponentModule: () => import('../sidebarLeft/tabs/expertGhost')
-  });
-
 
 export const AppChatBackgroundTab =
   scaffoldSolidJSTab({

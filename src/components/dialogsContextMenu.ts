@@ -629,13 +629,14 @@ export default class DialogsContextMenu {
       this.managers.appMessagesManager.markDialogUnread({
         peerId: this.monoforumParentPeerId,
         monoforumThreadId: this.peerId,
-        read: !!dialog.unread_count
+        read: !!dialog.unread_count,
+        explicit: true
       });
     } else if(dialog.unread_count) {
       if(!this.threadId) {
-        this.managers.appMessagesManager.markDialogUnread({peerId, read: true});
+        this.managers.appMessagesManager.markDialogUnread({peerId, read: true, explicit: true});
       } else {
-        this.managers.appMessagesManager.readHistory({peerId, maxId: dialog.top_message, threadId: this.threadId});
+        this.managers.appMessagesManager.readHistory({peerId, maxId: dialog.top_message, threadId: this.threadId, explicit: true});
       }
     } else if(!this.threadId) {
       this.managers.appMessagesManager.markDialogUnread({peerId});
