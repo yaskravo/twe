@@ -43,6 +43,7 @@ import isEphemeralMessageId from '@appManagers/utils/messageId/isEphemeralMessag
 import isEphemeralMessage from '@appManagers/utils/messages/isEphemeralMessage';
 import isAnchoredEphemeralMessage from '@appManagers/utils/messages/isAnchoredEphemeralMessage';
 import isSavedDeletedMessage, {SavedDeletedMessage} from '@appManagers/utils/messages/isSavedDeletedMessage';
+import isGhost from '@appManagers/utils/expertGhost';
 import mergeSavedDeletedMids from '@appManagers/utils/messages/mergeSavedDeletedMids';
 import canReplyToEphemeralMessage from '@appManagers/utils/messages/canReplyToEphemeralMessage';
 import isForceReplyMarkup from '@appManagers/utils/messages/isForceReplyMarkup';
@@ -9739,11 +9740,12 @@ export class AppMessagesManager extends AppManager {
     const historyStorage = this.getHistoryStorage(peerId, threadId || monoforumThreadId);
 
     // The server call is the only thing that may be redundant when
-    // `triedToReadMaxId >= maxId`. The local apply must always run because the
+    // `triedToReadMaxId >= maxId`, and the only thing ghost mode holds back: the chat reads as read
+    // here, not on the server. The local apply must always run because the
     // user can scroll into messages whose mid <= a previously-read maxId
     // (e.g. messages loaded later, or scrolling up after a fast jump to bottom).
     // Without this, the unread counter "freezes" mid-scroll on high-volume chats.
-    const skipServerCall = historyStorage.triedToReadMaxId >= maxId || !!historyStorage.readPromise;
+    const skipServerCall = historyStorage.triedToReadMaxId >= maxId || !!historyStorage.readPromise || isGhost(this.appStateManager.settings, 'read');
 
     let apiPromise: Promise<any>;
     if(monoforumThreadId) {
@@ -10095,7 +10097,8 @@ export class AppMessagesManager extends AppManager {
   }
 
   public readMessages(peerId: PeerId, msgIds: number[]) {
-    if(DO_NOT_READ_HISTORY) {
+    // * ghost mode: a voice message stays unlistened, a mention unread
+    if(DO_NOT_READ_HISTORY || isGhost(this.appStateManager.settings, 'read')) {
       return Promise.resolve();
     }
 
@@ -10192,7 +10195,7 @@ export class AppMessagesManager extends AppManager {
   }
 
   public async readMentions(peerId: PeerId, threadId?: number, isReaction?: boolean, isPollVote?: boolean): Promise<boolean> {
-    if(DO_NOT_READ_HISTORY) {
+    if(DO_NOT_READ_HISTORY || isGhost(this.appStateManager.settings, 'read')) {
       return;
     }
 
@@ -14667,7 +14670,10 @@ export class AppMessagesManager extends AppManager {
       !(await this.canSendToPeer(peerId)) ||
       peerId === this.appPeersManager.peerId ||
       (!force && !isDraftAction && typing?.action?._ === action._) ||
-      this.appPeersManager.isMonoforum(peerId)
+      this.appPeersManager.isMonoforum(peerId) ||
+      // * ghost mode: no "typing…", "recording…" or "sending a photo…" for others to see (a draft
+      // * being streamed is the message itself, not a trace)
+      (!isDraftAction && isGhost(this.appStateManager.settings, 'typing'))
     ) {
       return Promise.resolve(false);
     }

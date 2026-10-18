@@ -18,6 +18,7 @@ import type {ContactsSortMode} from '@appManagers/utils/users/sortContacts';
 import {DEFAULT_EXPERT_FONT, type InterfaceFont} from '@config/font';
 import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, type ExpertWallpaper} from '@config/expertAppearance';
 import type {DeletedMessageMark} from '@appManagers/utils/messages/isSavedDeletedMessage';
+import type {GhostTrace} from '@appManagers/utils/expertGhost';
 
 // Factory tinted ("Dark") collapses onto the first base-color preset (blue) so the accent picker
 // can omit a separate "default" swatch — resetting to factory now reaches the same state the user
@@ -177,6 +178,8 @@ export type StateSettings = {
     wallpaper: ExpertWallpaper,
     // How round Expert's corners are: a step of EXPERT_CORNER_SCALES
     corners: number,
+    // Expert's ghost mode (utils/expertGhost.ts): on or off, and which traces it holds back
+    ghost: {enabled: boolean} & {[trace in GhostTrace]: boolean},
     // Expert's light mode for weak computers (helpers/liteMode.ts): on, off, or on where the device looks weak
     lightMode: 'auto' | 'on' | 'off',
     // The font Expert's design draws the interface in (config/font.ts)
@@ -625,6 +628,7 @@ export const SETTINGS_INIT: StateSettings = {
     accent: DEFAULT_EXPERT_ACCENT,
     wallpaper: DEFAULT_EXPERT_WALLPAPER,
     corners: DEFAULT_EXPERT_CORNERS,
+    ghost: {enabled: false, read: true, typing: true, online: true, stories: true},
     lightMode: 'auto',
     font: DEFAULT_EXPERT_FONT,
     deviceFont: '',

@@ -106,6 +106,8 @@ import useHasFoldersSidebar, {
 } from '@stores/foldersSidebar';
 import isObject from '@helpers/object/isObject';
 import {useAppSettings} from '@stores/appSettings';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
+import CheckboxField from '@components/checkboxField';
 import {useCollapsedCommunityDialogsKey} from '@stores/communities';
 import isCommunity from '@appManagers/utils/communities/isCommunity';
 import {openEmojiStatusPicker} from '@components/sidebarLeft/emojiStatusPicker';
@@ -732,6 +734,12 @@ export class AppSidebarLeft extends SidebarSlider {
       createSubmenu: () => this.createNewChatsSubmenu()
     });
 
+    // * Expert's ghost mode, on and off in one click (Settings → Expert → Ghost Mode says what it hides)
+    const ghostCheckbox = new CheckboxField({
+      toggle: true,
+      stateKey: joinDeepPath('settings', 'expert', 'ghost', 'enabled')
+    });
+
     const menuButtons: (ButtonMenuItemOptions & {verify?: () => boolean | Promise<boolean>})[] = [{
       icon: 'plus',
       text: 'MultiAccount.AddAccount',
@@ -774,10 +782,15 @@ export class AppSidebarLeft extends SidebarSlider {
       },
       verify: () => IS_CALL_SUPPORTED || IS_CONFERENCE_CALL_SUPPORTED
     }, {
+      icon: 'eyecross',
+      text: 'Expert.Ghost',
+      onClick: () => {},
+      checkboxField: ghostCheckbox,
+      separator: true
+    }, {
       id: 'settings',
       icon: 'settings',
       text: 'Settings',
-      separator: true,
       onClick: () => {
         closeTabsBefore(() => {
           this.createTab(AppSettingsTab).open();
@@ -907,6 +920,8 @@ export class AppSidebarLeft extends SidebarSlider {
         filteredButtons.splice(0, filteredButtons.length, ...buttons);
       },
       onOpen: () => {
+        // * it may have been switched in Settings since
+        ghostCheckbox.setValueSilently(!!useAppSettings()[0].expert?.ghost?.enabled);
         moreSubmenu.onOpen();
         newSubmenu.onOpen();
         btnArchive.element?.append(this.archivedCount);

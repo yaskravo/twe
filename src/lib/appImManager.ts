@@ -59,6 +59,7 @@ import {simulateClickEvent} from '@helpers/dom/clickEvent';
 import {attachSkipToContent, setLandmarkLabels} from '@helpers/dom/appLandmarks';
 import showCallPopup from '@components/call';
 import copy from '@helpers/object/copy';
+import {joinDeepPath} from '@helpers/object/setDeepProperty';
 import numberThousandSplitter from '@helpers/number/numberThousandSplitter';
 import appChatBackground, {AppChatBackground} from '@components/chat/bubbles/chatBackground';
 import {IS_CHROMIUM, IS_FIREFOX} from '@environment/userAgent';
@@ -388,6 +389,14 @@ export class AppImManager extends EventListenerBase<{
     if(skipLink && Modes.a11y) attachSkipToContent(skipLink, this.columnEl);
     this.setStaticLandmarkLabels();
     rootScope.addEventListener('language_change', this.setStaticLandmarkLabels);
+
+    // * ghost mode on or off: the status follows at once (appUsersManager.updateMyOnlineStatus)
+    const ghostKey = joinDeepPath('settings', 'expert', 'ghost');
+    rootScope.addEventListener('settings_updated', ({key}) => {
+      if(key.startsWith(ghostKey)) {
+        this.updateStatus();
+      }
+    });
 
     idleController.addEventListener('change', (idle) => {
       this.offline = idle;

@@ -5,6 +5,7 @@ The first Expert release. Here is what's new compared to Telegram Web K.
 * A new look. Rounder bubbles and menus, warmer colors, the Nunito font and an orange accent. You can switch back to classic Telegram at any time.
 * Lots of settings in Settings → Expert: accent color, chat background (ready-made ones, your own color or photo), corner roundness, font (built in, from your computer or your own file) and how deleted messages look.
 * Light mode for older computers. It turns off heavy effects so everything stays smooth. On automatic it turns on by itself when your computer needs it.
+* Ghost mode. Others don't see that you read their messages, type, are online or watched their stories. Turn it on and off right from the side menu, and choose what to hide in Settings → Expert.
 * The Expert logo and icons everywhere.
 
 ### 2.1.0 (491)

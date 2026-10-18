@@ -6,6 +6,7 @@
  */
 
 import filterUnique from '@helpers/array/filterUnique';
+import isGhost from '@appManagers/utils/expertGhost';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import deferredPromise, {CancellablePromise} from '@helpers/cancellablePromise';
 import cleanSearchText, {ProcessSearchTextOptions, processSearchText} from '@helpers/cleanSearchText';
@@ -1294,7 +1295,21 @@ export class AppUsersManager extends AppManager {
     }
   }
 
+  // * ghost mode: the user is not online for others. The first status after it is on says "offline" —
+  // * the request a client sends when it is put away — and no status follows until it is off again
+  private ghostOfflineSent: boolean;
   public updateMyOnlineStatus(offline: boolean) {
+    if(isGhost(this.appStateManager.settings, 'online')) {
+      if(this.ghostOfflineSent) {
+        return Promise.resolve(true);
+      }
+
+      this.ghostOfflineSent = true;
+      offline = true;
+    } else {
+      this.ghostOfflineSent = false;
+    }
+
     this.setUserStatus(this.getSelf().id, offline);
     return this.apiManager.invokeApiSingle('account.updateStatus', {offline});
   }

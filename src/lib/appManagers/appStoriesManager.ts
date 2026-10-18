@@ -1,4 +1,5 @@
 import forEachReverse from '@helpers/array/forEachReverse';
+import isGhost from '@appManagers/utils/expertGhost';
 import indexOfAndSplice from '@helpers/array/indexOfAndSplice';
 import insertInDescendSortedArray from '@helpers/array/insertInDescendSortedArray';
 import toArray from '@helpers/array/toArray';
@@ -1375,7 +1376,8 @@ export default class AppStoriesManager extends AppManager {
       max_id: maxId
     });
 
-    if(TEST_READ) {
+    // * ghost mode: a story seen here is not seen for its author
+    if(TEST_READ || isGhost(this.appStateManager.settings, 'stories')) {
       return;
     }
 
@@ -1389,6 +1391,10 @@ export default class AppStoriesManager extends AppManager {
   }
 
   public incrementStoryViews(peerId: PeerId, ids: StoryItem['id'][]) {
+    if(isGhost(this.appStateManager.settings, 'stories')) {
+      return Promise.resolve(true);
+    }
+
     return this.apiManager.invokeApiSingleProcess({
       method: 'stories.incrementStoryViews',
       params: {

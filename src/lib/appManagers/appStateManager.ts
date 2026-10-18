@@ -38,6 +38,11 @@ export default class AppStateManager {
     return Promise.resolve(this.state);
   }
 
+  // * the settings as they are now, for a check that cannot wait (utils/expertGhost.ts)
+  public get settings() {
+    return this.state.settings;
+  }
+
   public setByKey(key: string, value: any) {
     setDeepProperty(this.state, key, value);
 
