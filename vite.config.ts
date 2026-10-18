@@ -60,12 +60,14 @@ if(isDEV) {
   }
 }
 
+// * the address the site is published at: the build of the site sets it (.github/workflows/build-site.yml)
+const SITE_URL = process.env.EXPERT_SITE_URL || 'https://tgexpert.github.io/';
 const handlebarsPlugin = handlebars({
   context: {
     title: 'Expert',
     description: 'Expert is an unofficial Telegram web client based on Telegram Web K.',
-    url: 'https://yaskravo.github.io/twe/',
-    origin: 'https://yaskravo.github.io/twe/'
+    url: SITE_URL,
+    origin: SITE_URL
   }
 });
 

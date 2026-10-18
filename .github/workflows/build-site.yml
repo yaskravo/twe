@@ -1,35 +1,42 @@
-name: Deploy to GitHub Pages
+name: Build the site
 
-# Builds Expert from master and publishes it on GitHub Pages (Settings → Pages → Source: GitHub
-# Actions). The app is static: the browser connects to Telegram itself, nothing runs on a server.
+# Builds Expert into a GitHub Pages artifact. It is not published from here: the site lives at the
+# Telegram-Web-Expert organization's own address, whose repository calls this workflow and deploys
+# what it builds (.github/workflows/publish.yml there). An address of its own keeps a signed-in
+# session's keys apart from other sites: the browser keeps one storage per address, and
+# yaskravo.github.io is shared by every GitHub Pages site of yaskravo's. The app is static: the
+# browser connects to Telegram itself, nothing runs on a server.
 #
-# The site's own Telegram API id is taken from the repository secrets TELEGRAM_API_ID and
-# TELEGRAM_API_HASH (my.telegram.org → API development tools) when they are set; without them the
-# build keeps the one in .env.
+# The site's own Telegram API id comes from the caller's secrets TELEGRAM_API_ID and
+# TELEGRAM_API_HASH (my.telegram.org → API development tools); without them the build keeps the
+# one in .env.
 
 on:
-  push:
-    branches: [master]
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit of yaskravo/twe to build
+        type: string
+        required: true
+    secrets:
+      TELEGRAM_API_ID:
+        required: false
+      TELEGRAM_API_HASH:
+        required: false
 
-# * the actions are pinned to commits, not tags: this build publishes the page people sign in on,
-# * so nothing in it may change under it without a change to this file
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-# * one deployment at a time, and a newer push does not wait for an older one to finish
-concurrency:
-  group: pages
-  cancel-in-progress: true
+# * the actions are pinned to commits, not tags: this build makes the page people sign in on, so
+# * nothing in it may change under it without a change to this file
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
+      # * the code by name: a called workflow runs in the context of the repository that calls it
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          repository: yaskravo/twe
+          ref: ${{ inputs.ref }}
 
       - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
@@ -49,6 +56,9 @@ jobs:
             printf 'VITE_API_ID=%s\nVITE_API_HASH=%s\n' "$API_ID" "$API_HASH" > .env.local
           fi
 
+      - id: pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
       # * a client whose cached language pack is older than this number fetches it again, so the
       # * strings a deploy brings reach those who have the site open already
       - name: Number this build's local strings
@@ -58,6 +68,9 @@ jobs:
       - run: pnpm run typecheck
       - run: pnpm run generate-changelog
       - run: pnpm exec vite build
+        env:
+          # * the address the page names itself by (its canonical link, link previews)
+          EXPERT_SITE_URL: ${{ steps.pages.outputs.base_url }}/
       - run: pnpm run check-bundle
 
       # * the site is what server.js serves: the build over public/, which holds the static assets
@@ -68,18 +81,6 @@ jobs:
           cp -r public/. site/
           cp -r dist/. site/
 
-      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
-
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
         with:
           path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
