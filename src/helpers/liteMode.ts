@@ -24,10 +24,13 @@ export type LiteModeKey = 'all' | 'gif' | 'video' |
 export type AnimationLevel = 0 | 1 | 2;
 
 // * what Expert's light mode (Settings → Expert → Performance) turns off on top of the user's own
-// * choices: the effects that cost the most on a weak computer, with movement given up for fades
+// * choices: the effects that cost the most on a weak computer, with movement given up for fades,
+// * and the panels' stickers and emoji, which would all start playing at once when a panel opens
+// * (they play under the pointer instead; those in the chats still play)
 const LIGHT_MODE_KEYS: Set<LiteModeKey> = new Set([
   'blur', 'motion', 'chat_background', 'chat_spoilers', 'emoji_appear',
-  'effects', 'effects_premiumstickers', 'effects_reactions', 'effects_emoji'
+  'effects', 'effects_premiumstickers', 'effects_reactions', 'effects_emoji',
+  'stickers_panel', 'emoji_panel'
 ]);
 
 export class LiteMode {

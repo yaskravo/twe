@@ -25,16 +25,19 @@ export default function isWeakDevice() {
     return weak;
   }
 
-  // * a browser driven by tests: it often draws without a GPU, and the suites must see the interface
-  // * as it is set, not lightened
-  if(navigator.webdriver) {
+  // * a browser driven by tests, or the unit tests' jsdom: they often draw without a GPU and say
+  // * little of the machine, and the suites must see the interface as it is set, not lightened
+  if(navigator.webdriver || navigator.userAgent.includes('jsdom')) {
     return weak = false;
   }
 
   const cores = navigator.hardwareConcurrency || 4;
-  // * in gigabytes, rounded down to a power of two; only Chromium says it
+  // * in gigabytes, rounded down to a power of two; only Chromium says it. Safari and Firefox do not,
+  // * and name no graphics card either (Safari says "Apple GPU" for every Mac), so there the cores
+  // * alone tell: four threads or fewer is a dual-core computer of years ago — an Intel MacBook —
+  // * while today's have eight and more
   const memory: number = (navigator as any).deviceMemory;
   return weak = cores <= 2 ||
-    (memory !== undefined && (memory <= 2 || (cores <= 4 && memory <= 4))) ||
+    (memory !== undefined ? memory <= 2 || (cores <= 4 && memory <= 4) : cores <= 4) ||
     hasSoftwareGraphics();
 }
