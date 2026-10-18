@@ -6,6 +6,14 @@
   height: 100%;
 }
 
+.mark {
+  display: block;
+  width: 1em;
+  height: 1em;
+  // * the strokes reach the box's edges: a little room keeps them off the tile's
+  padding: .08em;
+}
+
 .tile {
   fill: var(--primary-color);
 }

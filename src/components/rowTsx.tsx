@@ -419,7 +419,9 @@ Row.Subtitle = (props: {
 Row.Icon = (props: {
   icon: Icon,
   class?: string,
-  noBackground?: boolean
+  noBackground?: boolean,
+  // * a drawing of its own in place of the icon's glyph, on the icon's tile
+  children?: JSX.Element
 }) => {
   return useContext(RowContext).register('icon', (
     <span
@@ -433,7 +435,7 @@ Row.Icon = (props: {
         'background-image': getRowIconBackgroundImage(props.icon)
       }}
     >
-      <IconTsx icon={props.icon} class="row-icon-icon" />
+      {props.children ?? <IconTsx icon={props.icon} class="row-icon-icon" />}
     </span>
   ));
 };

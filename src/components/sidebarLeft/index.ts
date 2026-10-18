@@ -1918,7 +1918,7 @@ function getVersionLink() {
   });
   const t = document.createElement('span');
   t.classList.add('btn-menu-footer-text');
-  t.append(`Telegram Web Expert ${App.version} (${App.build})`, document.createElement('br'), '© V. Sullimov');
+  t.append(`Telegram Web Expert ${App.version} (${App.build})`, document.createElement('br'), i18n('Expert.Copyright'));
   btnMenuFooter.append(t);
 
   return btnMenuFooter;

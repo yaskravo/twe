@@ -1,0 +1,33 @@
+.popup {
+  :global(.popup-container) {
+    width: 26rem;
+    max-width: calc(100vw - 2rem);
+  }
+}
+
+.body {
+  max-height: min(60vh, 32rem);
+  overflow-y: auto;
+  padding-inline: 1.25rem;
+}
+
+.release + .release {
+  margin-top: 1.25rem;
+}
+
+.version {
+  margin: 0 0 .5rem;
+  font-size: 1rem;
+  font-weight: var(--font-weight-bold);
+}
+
+.notes,
+.paragraph {
+  margin: 0;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.paragraph + .paragraph {
+  margin-top: .75rem;
+}

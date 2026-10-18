@@ -1,3 +1,4 @@
+import apiManagerProxy from '@lib/apiManagerProxy';
 import blurActiveElement from '@helpers/dom/blurActiveElement';
 import loadFonts from '@helpers/dom/loadFonts';
 import {doubleRaf} from '@helpers/schedulers';
@@ -65,6 +66,11 @@ export async function bootstrapIm(): Promise<void> {
   setTimeout(() => {
     disposeActiveAuthFlow();
   }, 1000);
+
+  // * an update: what it brings, once, in Expert's own popup
+  if(apiManagerProxy.newVersion) {
+    import('@components/popups/expertAbout').then(({showExpertChangelog}) => showExpertChangelog([apiManagerProxy.newVersion]));
+  }
 }
 
 export default bootstrapIm;

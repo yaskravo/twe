@@ -1,4 +1,4 @@
-import {createSignal, For, onCleanup, onMount, Show} from 'solid-js';
+import {createSignal, For, JSX, onCleanup, onMount, Show} from 'solid-js';
 import ButtonMenuToggle from '@components/buttonMenuToggle';
 import {AppPrivacyAndSecurityTab} from '@components/solidJsTabs/tabs';
 import {AppChatFoldersTab} from '@components/solidJsTabs/tabs';
@@ -23,6 +23,7 @@ import {AccountAuthorizations, Authorization, ConnectedBot} from '@layer';
 import {attachClickEvent} from '@helpers/dom/clickEvent';
 import Section from '@components/section';
 import {AppExpertSettingsTab, AppStickersAndEmojiTab} from '@components/solidJsTabs/tabs';
+import {ExpertMark} from '@components/expertLogo';
 import showPremiumPopup, {showBusinessPopup} from '@components/popups/premium';
 import apiManagerProxy from '@lib/apiManagerProxy';
 import useStars, {hasTonTransactions} from '@stores/stars';
@@ -58,6 +59,8 @@ import {bumpRecentSettingsSearch} from '@lib/settingsSearch/recent';
 
 type SubTabConfig = {
   icon: Icon;
+  // * a drawing of its own on the icon's tile (Expert's mark)
+  iconElement?: () => JSX.Element;
   text: LangPackKey;
   tabConstructor: SliderSuperTabConstructable;
   getInitArgs?: () => any[];
@@ -249,7 +252,7 @@ const Settings = () => {
 
   // ── Sub-tab rows (expert/notifications/data/privacy/general/folders/stickers).
   const subTabConfigs: SubTabConfig[] = [
-    makeSubTabConfig('star_circle_filled', 'Expert.Title', AppExpertSettingsTab, tab),
+    {...makeSubTabConfig('star_circle_filled', 'Expert.Title', AppExpertSettingsTab, tab), iconElement: () => <ExpertMark class="row-icon-icon" />},
     makeSubTabConfig('bell_filled', 'AccountSettings.Notifications', AppNotificationsTab, tab),
     makeSubTabConfig('data_filled', 'DataSettings', AppDataAndStorageTab, tab),
     makeSubTabConfig('key_filled', 'AccountSettings.PrivacyAndSecurity', AppPrivacyAndSecurityTab, tab),
@@ -394,7 +397,7 @@ const Settings = () => {
           <For each={subTabConfigs}>
             {(item) => (
               <Row clickable={onSubTabClick(item)}>
-                <Row.Icon icon={item.icon} />
+                <Row.Icon icon={item.icon}>{item.iconElement?.()}</Row.Icon>
                 <Row.Title>{i18n(item.text)}</Row.Title>
               </Row>
             )}

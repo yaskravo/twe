@@ -25,7 +25,16 @@ export default function ExpertSettings() {
           <Row.Title>{i18n('Expert.Performance')}</Row.Title>
         </Row>
       </Section>
-      <Section noContent caption="Expert.About" captionArgs={[`${App.version} (${App.build})`]} />
+      <Section caption="Expert.About" captionArgs={[`${App.version} (${App.build})`]}>
+        <Row clickable={() => import('@components/popups/expertAbout').then(({showExpertChangelog}) => showExpertChangelog())}>
+          <Row.Icon icon="gift_filled" />
+          <Row.Title>{i18n('Expert.WhatsNew')}</Row.Title>
+        </Row>
+        <Row clickable={() => import('@components/popups/expertAbout').then(({showExpertLicense}) => showExpertLicense())}>
+          <Row.Icon icon="info_filled" />
+          <Row.Title>{i18n('Expert.License')}</Row.Title>
+        </Row>
+      </Section>
     </>
   );
 }
