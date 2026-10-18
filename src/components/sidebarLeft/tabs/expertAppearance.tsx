@@ -1,4 +1,4 @@
-import {createSignal, For, JSX, Show} from 'solid-js';
+import {createEffect, createSignal, For, JSX, onCleanup, Show} from 'solid-js';
 import Section from '@components/section';
 import Row from '@components/rowTsx';
 import CheckboxFieldTsx from '@components/checkboxFieldTsx';
@@ -12,71 +12,86 @@ import {InputFieldTsx} from '@components/inputFieldTsx';
 import {toastNew} from '@components/toast';
 import requestFile from '@helpers/files/requestFile';
 import {getInterfaceFontFamily, INTERFACE_FONTS} from '@config/font';
-import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_ACCENTS, EXPERT_CORNER_SCALES, EXPERT_WALLPAPER_CHOICES, EXPERT_WALLPAPERS} from '@config/expertAppearance';
+import {DEFAULT_EXPERT_ACCENT, DEFAULT_EXPERT_CORNERS, DEFAULT_EXPERT_WALLPAPER, EXPERT_ACCENTS, EXPERT_CORNER_SCALES, EXPERT_WALLPAPER_CHOICES} from '@config/expertAppearance';
 import RangeSettingSelector from '@components/rangeSettingSelector';
 import {IconTsx} from '@components/iconTsx';
 import ProgressivePreloader from '@components/preloader';
 import deferredPromise from '@helpers/cancellablePromise';
 import noop from '@helpers/noop';
-import {getWallPaperColors} from '@helpers/color';
 import {subscribeOn} from '@helpers/solid/subscribeOn';
 import rootScope from '@lib/rootScope';
-import {ThemeSection} from '@components/sidebarLeft/tabs/generalSettings';
 import {AppBackgroundTab, prepareWallPaperImageUpload, WALLPAPER_IMAGE_TYPES} from '@components/sidebarLeft/tabs/background';
-import {DEFAULT_THEME} from '@config/state';
-import type {ThemeSettings, WallPaper} from '@layer';
+import type {BaseTheme, WallPaper} from '@layer';
 import themeController from '@helpers/themeController';
 import classNames from '@helpers/string/classNames';
-import useIsNightTheme from '@hooks/useIsNightTheme';
 import styles from '@components/sidebarLeft/tabs/expertAppearance.module.scss';
 
 const toHex = (color: number) => '#' + color.toString(16).padStart(6, '0');
 
-// * a wallpaper's preview: its gradient, darkened at night the way a night wallpaper is a dark pattern
-const getWallpaperPreview = (colors: (number | string)[], night: boolean) => {
-  const stops = colors.map((color) => typeof(color) === 'number' ? toHex(color) : color);
-  const gradient = stops.length > 1 ? `linear-gradient(135deg, ${stops.join(', ')})` : stops[0];
-  return night ? `linear-gradient(rgba(0, 0, 0, .55), rgba(0, 0, 0, .55)), ${gradient}` : gradient;
-};
-
-// * Telegram's own wallpaper, for its tile
-const getTelegramWallpaperColors = (night: boolean) => {
-  const stock = (DEFAULT_THEME.settings as ThemeSettings[]).find((s) => s.base_theme._ === (night ? 'baseThemeNight' : 'baseThemeClassic'));
-  return getWallPaperColors(stock.wallpaper);
-};
-
 // * what the theme shows now: its stock wallpaper (which Expert's stands in for), the user's own
-// * colour or photo, or another one picked in Telegram's settings
+// * colour or photo, or another one picked in Telegram's settings; and the base the previews take,
+// * whose own Expert wallpapers they show (Dark has none: it shows the night ones)
 const readWallpaperState = () => {
-  const settings = themeController.getThemeSettings(themeController.getTheme());
+  const theme = themeController.getTheme();
+  const settings = themeController.getThemeSettings(theme);
   const wallPaper = settings?.wallpaper;
   const stock = !!settings && themeController.hasStockWallPaper(settings);
   const kind = stock || !wallPaper ? undefined :
     wallPaper._ === 'wallPaperNoFile' ? 'color' as const :
     !(wallPaper as WallPaper.wallPaper).pFlags?.pattern ? 'photo' as const :
     undefined;
-  return {stock, kind, colors: kind === 'color' ? getWallPaperColors(wallPaper) : []};
+  const baseTheme = themeController.getBaseThemeForName(theme.name);
+  return {
+    stock,
+    kind,
+    wallPaper: kind ? wallPaper : undefined,
+    baseTheme: baseTheme === 'baseThemeTinted' ? 'baseThemeNight' as const : baseTheme
+  };
 };
 
+// * a wallpaper the way a chat shows it, with a bubble of each side — Telegram's own rendering and
+// * tile, as in its theme picker; or an icon, for a choice with nothing to show yet
 const WallpaperTile = (props: {
   active: boolean,
-  background?: string,
+  wallPaper?: WallPaper,
+  baseTheme: BaseTheme['_'],
   icon?: Icon,
   label: LangPackKey,
   onClick: (e: MouseEvent & {currentTarget: HTMLButtonElement}) => void
-}) => (
-  <button
-    type="button"
-    class={classNames(styles.wallpaper, props.active && styles.active)}
-    aria-pressed={props.active}
-    onClick={props.onClick}
-  >
-    <span class={classNames(styles.preview, !props.background && styles.blank)} style={props.background ? {background: props.background} : undefined}>
-      {props.icon && !props.background && <IconTsx icon={props.icon} />}
-    </span>
-    <span class={styles.name}>{i18n(props.label)}</span>
-  </button>
-);
+}) => {
+  let tile: HTMLButtonElement;
+  createEffect(() => {
+    const result = props.wallPaper && AppBackgroundTab.addWallPaper(props.wallPaper, undefined, props.baseTheme);
+    if(!result) {
+      return;
+    }
+
+    tile.prepend(result.container);
+    onCleanup(() => {
+      result.dispose();
+      result.container.remove();
+    });
+  });
+
+  return (
+    <div class={classNames(styles.wallpaper, props.active && styles.active)}>
+      <button
+        ref={tile}
+        type="button"
+        class={classNames('theme-container', styles.tile, props.active && 'active', !props.wallPaper && styles.blank)}
+        aria-pressed={props.active}
+        aria-label={I18n.format(props.label, true)}
+        onClick={props.onClick}
+      >
+        <Show when={props.wallPaper} fallback={<IconTsx icon={props.icon} />}>
+          <div class="theme-bubble is-in" />
+          <div class="theme-bubble is-out" />
+        </Show>
+      </button>
+      <span class={styles.name}>{i18n(props.label)}</span>
+    </div>
+  );
+};
 
 const FONT_NAMES: {[font in typeof INTERFACE_FONTS[number]]: () => JSX.Element} = {
   nunito: () => 'Nunito',
@@ -85,12 +100,11 @@ const FONT_NAMES: {[font in typeof INTERFACE_FONTS[number]]: () => JSX.Element} 
   roboto: () => i18n('Expert.Font.Telegram')
 };
 
-// Settings → Expert → Appearance: Expert's look or Telegram's, the theme, and what the look is made of —
-// accent, chat background, corners, text size, font.
+// Settings → Expert → Appearance: Expert's look or Telegram's, and what the look is made of — accent,
+// chat background, corners, text size, font. Telegram's own theme settings stay in General Settings.
 export default function ExpertAppearance() {
   const [tab] = useSuperTab<typeof AppExpertAppearanceTab>();
   const [appSettings, setAppSettings] = useAppSettings();
-  const isNight = useIsNightTheme();
   const fontStateKey = joinDeepPath('settings', 'expert', 'font');
 
   const [wallpaperState, setWallpaperState] = createSignal(readWallpaperState());
@@ -158,8 +172,6 @@ export default function ExpertAppearance() {
           ))}
         </form>
       </Section>
-      {/* Telegram's own theme settings, the same block as in General Settings */}
-      <ThemeSection />
       <Show when={appSettings.expert?.design !== 'classic'}>
         <Section name="Expert.Accent">
           <div class={styles.swatches}>
@@ -185,9 +197,8 @@ export default function ExpertAppearance() {
             <For each={EXPERT_WALLPAPER_CHOICES}>{(wallpaper) => (
               <WallpaperTile
                 active={wallpaperState().stock && (appSettings.expert?.wallpaper || DEFAULT_EXPERT_WALLPAPER) === wallpaper}
-                background={getWallpaperPreview(wallpaper === 'telegram' ?
-                  getTelegramWallpaperColors(isNight()) :
-                  EXPERT_WALLPAPERS[wallpaper as keyof typeof EXPERT_WALLPAPERS][isNight() ? 'night' : 'light'], isNight())}
+                wallPaper={themeController.getExpertWallPaper(wallpaper, wallpaperState().baseTheme)}
+                baseTheme={wallpaperState().baseTheme}
                 label={`Expert.Wallpaper.${wallpaper}` as LangPackKey}
                 onClick={() => themeController.setExpertWallpaper(wallpaper)}
               />
@@ -195,16 +206,19 @@ export default function ExpertAppearance() {
             {/* the user's own: a colour or gradient in Telegram's editor, or a photo */}
             <WallpaperTile
               active={wallpaperState().kind === 'color'}
-              background={wallpaperState().kind === 'color' ? getWallpaperPreview(wallpaperState().colors, false) : undefined}
+              wallPaper={wallpaperState().kind === 'color' ? wallpaperState().wallPaper : undefined}
+              baseTheme={wallpaperState().baseTheme}
               icon="colorize"
               label="Expert.Wallpaper.color"
               onClick={() => tab.slider.createTab(AppBackgroundColorTab).open()}
             />
             <WallpaperTile
               active={wallpaperState().kind === 'photo'}
+              wallPaper={wallpaperState().kind === 'photo' ? wallpaperState().wallPaper : undefined}
+              baseTheme={wallpaperState().baseTheme}
               icon="image"
               label="Expert.Wallpaper.photo"
-              onClick={(e) => uploadPhoto(e.currentTarget.firstElementChild as HTMLElement)}
+              onClick={(e) => uploadPhoto(e.currentTarget)}
             />
           </div>
         </Section>

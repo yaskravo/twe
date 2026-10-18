@@ -349,19 +349,27 @@ export class ThemeController {
     return {...settings, accent_color: accent, message_colors: [accent]};
   }
 
+  // * a base theme's stock wallpaper the way one of Expert's paints it ('telegram': as it is)
+  public getExpertWallPaper(wallpaper: ExpertWallpaper, baseTheme: BaseTheme['_']): WallPaper {
+    const stock = this.getStockThemeSettings(baseTheme)?.wallpaper as WallPaper.wallPaper;
+    const colors = getExpertWallpaperColors(wallpaper, baseTheme);
+    if(!stock?.settings || !colors) {
+      return stock;
+    }
+
+    const settings = {...stock.settings};
+    WALLPAPER_COLOR_KEYS.forEach((key, i) => settings[key] = colors[i]);
+    return {...stock, settings};
+  }
+
   // * the wallpaper a theme shows behind the chats: its own, or Expert's in place of the stock
   public getDisplayedWallPaper(theme: Theme | AppTheme): WallPaper {
     const settings = this.getThemeSettings(theme);
-    const colors = this.isExpertDesign() && settings &&
-      getExpertWallpaperColors(useAppSettings()[0].expert?.wallpaper || DEFAULT_EXPERT_WALLPAPER, settings.base_theme?._);
-    if(!colors || !this.hasStockWallPaper(settings)) {
+    if(!settings || !this.isExpertDesign() || !this.hasStockWallPaper(settings)) {
       return settings?.wallpaper;
     }
 
-    const wallPaper = settings.wallpaper as WallPaper.wallPaper;
-    const expertSettings = {...wallPaper.settings};
-    WALLPAPER_COLOR_KEYS.forEach((key, i) => expertSettings[key] = colors[i]);
-    return {...wallPaper, settings: expertSettings};
+    return this.getExpertWallPaper(useAppSettings()[0].expert?.wallpaper || DEFAULT_EXPERT_WALLPAPER, settings.base_theme._);
   }
 
   // * the theme as it is, with this base's stock entry — or a part of it — in place of its own
